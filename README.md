@@ -1,8 +1,8 @@
-# Economics-Dashboard-Web
+# Economics Dashboard Web
 
-Coming soon — a fully interactive, browser-based economics dashboard built with JavaScript
+Coming soon, a fully interactive, browser based economics dashboard built with JavaScript
 
-Built by [Naadir](https://github.com/Naadir-Dev-Portfolio)
+Built by [Naadir](https://github.com/Naadir Dev Portfolio)
 
 ## Overview
 
