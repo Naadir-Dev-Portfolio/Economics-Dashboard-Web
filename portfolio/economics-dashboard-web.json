@@ -1,9 +1,9 @@
 {
   "section": "web",
-  "category": "teamsites",
+  "category": "enterprise-hubs",
   "n": 3,
   "title": "Economics Dashboard Web",
-  "desc": "Interactive browser-based economics dashboard — live macro data, yield curves, housing, employment and inflation. Currently in development.",
+  "desc": "Interactive browser-based economics dashboard \u2014 live macro data, yield curves, housing, employment and inflation. Currently in development.",
   "code": "https://github.com/Naadir-Dev-Portfolio/Economics-Dashboard-Web",
   "details": "https://github.com/Naadir-Dev-Portfolio/Economics-Dashboard-Web/blob/main/README.md",
   "tags": [
