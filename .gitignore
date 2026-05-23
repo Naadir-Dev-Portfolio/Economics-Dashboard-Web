@@ -1,6 +1,7 @@
-# IDE
+# IDE / tools
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
@@ -8,6 +9,19 @@
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+.pytest_cache/
 
 # Logs
 *.log
@@ -20,3 +34,7 @@ yarn.lock
 # Build artifacts
 dist/
 build/
+
+# Local cache
+.cache/
+scripts/.cache/

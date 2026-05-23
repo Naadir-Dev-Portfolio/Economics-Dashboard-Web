@@ -1,74 +1,178 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Economics Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Live global economics dashboard — equities, bonds, rates, inflation, housing, commodities, FX, employment, and major events." />
+  <meta name="theme-color" content="#06090f" />
+  <title>MACRO//OPS — Global Economics Command Center</title>
 
-        body {
-            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
-            color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            text-align: center;
-            max-width: 600px;
-        }
-
-        h1 {
-            font-size: 3.5rem;
-            margin-bottom: 10px;
-            color: #ffffff;
-            font-weight: 600;
-        }
-
-        .subtitle {
-            font-size: 1.5rem;
-            color: #888;
-            margin-bottom: 40px;
-            font-weight: 300;
-        }
-
-        .status {
-            display: inline-block;
-            padding: 8px 16px;
-            background-color: rgba(255, 193, 7, 0.1);
-            border: 1px solid #ffc107;
-            border-radius: 4px;
-            color: #ffc107;
-            font-size: 0.95rem;
-            font-weight: 500;
-        }
-
-        .description {
-            margin-top: 30px;
-            color: #999;
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-    </style>
+  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/main.css" />
 </head>
 <body>
-    <div class="container">
-        <h1>Economics Dashboard</h1>
-        <p class="subtitle">Interactive Macro Data Visualization</p>
-        <div class="status">In Development</div>
-        <p class="description">
-            A comprehensive platform for economic and macro data analysis.<br>
-            Coming soon with live data integration and interactive charts.
-        </p>
+
+  <!-- Scanline overlay for the covert-ops aesthetic -->
+  <div class="scanline" aria-hidden="true"></div>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ TOP BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">◆</div>
+      <div class="brand-text">
+        <h1>MACRO<span class="brand-divider">//</span>OPS</h1>
+        <div class="brand-sub">Global Economics Command Center</div>
+      </div>
     </div>
+
+    <div class="topbar-actions">
+      <button class="btn-icon" id="btn-events" title="Major events timeline">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6m0 8v6M2 12h6m8 0h6"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>EVENTS</span>
+      </button>
+      <button class="btn-icon" id="btn-collapse-all" title="Collapse all sections">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9l8-5 8 5M4 15l8 5 8-5"/></svg>
+        <span>COLLAPSE</span>
+      </button>
+      <button class="btn-icon" id="btn-expand-all" title="Expand all sections">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l8 5 8-5M4 18l8-5 8 5"/></svg>
+        <span>EXPAND</span>
+      </button>
+      <div class="status-pill" id="live-status">
+        <span class="dot"></span>
+        <span class="status-label">LIVE</span>
+      </div>
+      <div class="last-update">
+        <span class="dim">LAST FETCH</span>
+        <span id="last-update">——</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ HERO KPI STRIP ━━━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="kpi-strip" id="kpi-strip" aria-label="Headline indicators">
+    <!-- KPI tiles injected by main.js -->
+  </section>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ NARRATIVE LEAD ━━━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="narrative" id="narrative">
+    <div class="narrative-inner">
+      <div class="narrative-tag">SITUATION REPORT</div>
+      <div class="narrative-text" id="narrative-text">Loading current macro state…</div>
+    </div>
+  </section>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ SECTION NAV ━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <nav class="section-nav" id="section-nav" aria-label="Jump to section">
+    <!-- Chips injected by main.js -->
+  </nav>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ SECTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <main id="sections-container">
+    <!-- Sections injected by main.js -->
+  </main>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ EVENTS DRAWER ━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <aside class="drawer" id="events-drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <div class="drawer-tag">CLASSIFIED · TIMELINE</div>
+        <h2>Major Economic Events</h2>
+      </div>
+      <button class="btn-close" id="btn-close-events" aria-label="Close">✕</button>
+    </div>
+    <div class="drawer-body" id="events-list"></div>
+  </aside>
+  <div class="drawer-scrim" id="drawer-scrim" hidden></div>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <footer class="footer">
+    <div class="footer-col">
+      <div class="footer-title">SOURCES</div>
+      <div class="footer-list">
+        FRED · St. Louis Fed · Yahoo Finance · BIS · NBER · Bank of England · ECB
+      </div>
+    </div>
+    <div class="footer-col">
+      <div class="footer-title">BUILD</div>
+      <div class="footer-list" id="footer-build">data refresh twice daily via GitHub Actions</div>
+    </div>
+    <div class="footer-col">
+      <div class="footer-title">NOTE</div>
+      <div class="footer-list">For research and education. Not investment advice.</div>
+    </div>
+  </footer>
+
+  <!-- Hidden card template -->
+  <template id="tpl-card">
+    <article class="card" data-series-id="">
+      <header class="card-head">
+        <div class="card-meta">
+          <span class="region-badge"></span>
+          <h3 class="card-title"></h3>
+        </div>
+        <div class="card-value">
+          <span class="value-num">—</span>
+          <span class="value-unit"></span>
+          <span class="value-change"></span>
+        </div>
+      </header>
+      <div class="card-body">
+        <div class="card-chart"></div>
+      </div>
+      <footer class="card-foot">
+        <div class="range-buttons" role="group">
+          <button data-range="1M">1M</button>
+          <button data-range="6M">6M</button>
+          <button data-range="YTD">YTD</button>
+          <button data-range="1Y">1Y</button>
+          <button data-range="5Y">5Y</button>
+          <button data-range="10Y">10Y</button>
+          <button data-range="MAX" class="is-active">MAX</button>
+        </div>
+        <div class="card-source"></div>
+      </footer>
+    </article>
+  </template>
+
+  <!-- Hidden section template -->
+  <template id="tpl-section">
+    <section class="section" data-section-key="">
+      <button class="section-head">
+        <div class="section-head-left">
+          <span class="section-icon"></span>
+          <h2 class="section-title"></h2>
+          <span class="section-blurb"></span>
+        </div>
+        <div class="section-head-right">
+          <span class="section-count"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </button>
+      <div class="section-body">
+        <div class="cards-grid"></div>
+      </div>
+    </section>
+  </template>
+
+  <!-- Loading screen -->
+  <div class="boot-screen" id="boot-screen">
+    <div class="boot-text">
+      <div class="boot-line">› INITIALIZING MACRO//OPS</div>
+      <div class="boot-line">› ESTABLISHING SECURE CHANNEL</div>
+      <div class="boot-line">› LOADING TIME SERIES…</div>
+    </div>
+    <div class="boot-bar"><div class="boot-bar-fill"></div></div>
+  </div>
+
+  <!-- ECharts via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="assets/js/data-loader.js"></script>
+  <script src="assets/js/charts.js"></script>
+  <script src="assets/js/main.js"></script>
 </body>
 </html>
