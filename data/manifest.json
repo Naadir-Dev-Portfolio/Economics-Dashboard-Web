@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-24T20:35:35+00:00",
-  "duration_sec": 11.4,
+  "generated_at": "2026-05-24T21:26:12+00:00",
+  "duration_sec": 12.7,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -61,8 +61,8 @@
       "icon": "oil_barrel",
       "blurb": "Raw materials \u2014 the real-economy temperature gauge.",
       "file": "data/commodities.json",
-      "series_count": 14,
-      "ok": 11,
+      "series_count": 16,
+      "ok": 13,
       "fail": 3
     },
     "fx": {
@@ -103,7 +103,7 @@
     }
   },
   "totals": {
-    "ok": 42,
+    "ok": 44,
     "fail": 93
   }
 }
