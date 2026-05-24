@@ -261,11 +261,23 @@
     setSymbol(symbol);
   }
 
+  /**
+   * loadLocal — load a series that has no TradingView mapping (e.g. UK pump
+   * fuel prices). Forces ARCHIVE mode and renders the local data.
+   */
+  function loadLocal(section, sid, series) {
+    if (!series) return;
+    state.currentSeries = series;
+    updateHeroQuote(series);
+    setMode('archive');
+  }
+
   global.Hero = {
     init,
     setSymbol,
     setMode,
     setRegion,
+    loadLocal,
     addAnnotation,
     removeAnnotation,
     clearAnnotations,

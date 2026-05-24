@@ -101,6 +101,78 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
     return out
 
 
+_UK_FUEL_CACHE: dict[str, list[list]] = {}
+
+def fetch_uk_fuel(column: str) -> list[list]:
+    """Scrape the gov.uk DESNZ weekly road fuel CSV and return one column.
+
+    ``column`` is either ``"petrol"`` or ``"diesel"``.
+    Returns [[ts_ms, pence_per_litre], ...] sorted by date.
+    """
+    if column in _UK_FUEL_CACHE:
+        return _UK_FUEL_CACHE[column]
+
+    page_url = "https://www.gov.uk/government/statistics/weekly-road-fuel-prices"
+    try:
+        r = requests.get(page_url, timeout=30,
+                         headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
+        r.raise_for_status()
+    except requests.RequestException as e:
+        log.warning("gov.uk fuel page fetch failed: %s", e)
+        return []
+
+    import re as _re
+    m = _re.search(r"https://assets\.publishing\.service\.gov\.uk/media/[a-f0-9]+/[^\"]+\.csv", r.text)
+    if not m:
+        log.warning("could not find UK fuel CSV link")
+        return []
+
+    csv_url = m.group(0)
+    try:
+        r2 = requests.get(csv_url, timeout=30,
+                          headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
+        r2.raise_for_status()
+    except requests.RequestException as e:
+        log.warning("UK fuel CSV fetch failed: %s", e)
+        return []
+
+    text = r2.content.decode("utf-8-sig", errors="replace")
+    rows = [ln.split(",") for ln in text.splitlines() if ln.strip()]
+    if len(rows) < 2:
+        return []
+
+    header = [c.strip().lower() for c in rows[0]]
+    # Find petrol / diesel pump-price columns
+    petrol_idx = next((i for i, h in enumerate(header) if "ulsp" in h and "pump" in h), None)
+    diesel_idx = next((i for i, h in enumerate(header) if "ulsd" in h and "pump" in h), None)
+
+    petrol_data, diesel_data = [], []
+    for row in rows[1:]:
+        if len(row) < max(petrol_idx or 0, diesel_idx or 0) + 1:
+            continue
+        date_str = row[0].strip()
+        # DD/MM/YYYY -> YYYY-MM-DD
+        try:
+            d, m_, y = date_str.split("/")
+            iso = f"{y}-{m_.zfill(2)}-{d.zfill(2)}"
+            ts = _to_ms(iso)
+        except Exception:
+            continue
+        if petrol_idx is not None:
+            try: petrol_data.append([ts, float(row[petrol_idx])])
+            except Exception: pass
+        if diesel_idx is not None:
+            try: diesel_data.append([ts, float(row[diesel_idx])])
+            except Exception: pass
+
+    petrol_data.sort(key=lambda r: r[0])
+    diesel_data.sort(key=lambda r: r[0])
+    _UK_FUEL_CACHE["petrol"] = petrol_data
+    _UK_FUEL_CACHE["diesel"] = diesel_data
+    log.info("UK fuel CSV: %d petrol, %d diesel observations", len(petrol_data), len(diesel_data))
+    return _UK_FUEL_CACHE.get(column, [])
+
+
 def fetch_yahoo(ticker: str) -> list[list]:
     """Pull a ticker from Yahoo Finance via yfinance and downsample to month-end."""
     try:
@@ -233,6 +305,12 @@ def fetch_one(s: dict) -> dict | None:
         data = fetch_fred(s["fred"], frequency=s.get("freq"))
         if data:
             source = f"FRED ({s['fred']})"
+
+    if (not data) and s.get("uk_fuel"):
+        log.info("  → %s via UK gov.uk fuel CSV", sid)
+        data = fetch_uk_fuel(s["uk_fuel"])
+        if data:
+            source = "gov.uk DESNZ weekly road fuel prices"
 
     if not data:
         log.error("  ✗ no data for %s", sid)

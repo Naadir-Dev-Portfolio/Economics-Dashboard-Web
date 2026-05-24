@@ -53,6 +53,7 @@
 
   function initModules() {
     window.Hero.init(state.sectionData);
+    window.KPI.init(state.sectionData);
     window.NewsFeed.init(state.news);
     window.EventsTimeline.init(state.events);
     window.Ribbon.init(state.sectionData);

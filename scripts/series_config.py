@@ -168,6 +168,8 @@ SECTIONS = {
             {"id": "uranium",   "name": "Uranium",             "region": "GLOBAL", "unit": "$/lb",  "yahoo": "UX=F"},
             {"id": "us_gas_pump","name": "US Retail Gasoline", "region": "US",     "unit": "$/gal", "fred": "GASREGW"},
             {"id": "us_diesel_pump","name": "US Retail Diesel","region": "US",     "unit": "$/gal", "fred": "GASDESW"},
+            {"id": "uk_petrol", "name": "UK Pump Petrol (ULSP)","region": "UK",    "unit": "p/L",   "uk_fuel": "petrol", "note": "DESNZ weekly road fuel survey."},
+            {"id": "uk_diesel", "name": "UK Pump Diesel (ULSD)","region": "UK",    "unit": "p/L",   "uk_fuel": "diesel", "note": "DESNZ weekly road fuel survey."},
         ],
     },
 
