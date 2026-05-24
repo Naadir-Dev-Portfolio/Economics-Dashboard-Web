@@ -1,30 +1,28 @@
 /**
- * data-loader.js
+ * data-loader.js — fetches static JSON files written by the Python scripts.
  *
- * Fetches the static JSON files written by scripts/fetch_data.py.
- * Caches in memory so each section is downloaded at most once per visit.
+ * Caches in memory; cache-busts the request URL so the browser respects
+ * recent GH Action commits.
  */
 (function (global) {
   'use strict';
 
   const cache = new Map();
   const inflight = new Map();
-
-  const DATA_BASE = 'data';
+  const BASE = 'data';
 
   async function fetchJSON(path) {
     if (cache.has(path)) return cache.get(path);
     if (inflight.has(path)) return inflight.get(path);
-
     const p = fetch(`${path}?v=${Date.now()}`, { cache: 'no-store' })
-      .then(async (r) => {
+      .then(async r => {
         if (!r.ok) throw new Error(`${path}: ${r.status}`);
         const json = await r.json();
         cache.set(path, json);
         inflight.delete(path);
         return json;
       })
-      .catch((err) => {
+      .catch(err => {
         inflight.delete(path);
         console.warn('[data-loader]', err);
         return null;
@@ -33,21 +31,33 @@
     return p;
   }
 
-  const DataLoader = {
-    manifest:  () => fetchJSON(`${DATA_BASE}/manifest.json`),
-    section:   (key) => fetchJSON(`${DATA_BASE}/${key}.json`),
-    events:    () => fetchJSON(`${DATA_BASE}/events.json`),
+  async function mergedEvents() {
+    const [hist, recent] = await Promise.all([
+      fetchJSON(`${BASE}/events.json`),
+      fetchJSON(`${BASE}/events_recent.json`),
+    ]);
+    const histArr = hist?.events || [];
+    const recentArr = recent?.events || [];
+    // Dedupe by (date, normalized title prefix)
+    const seen = new Set();
+    const norm = t => (t || '').toLowerCase().replace(/\W+/g, ' ').trim().slice(0, 60);
+    const merged = [];
+    for (const e of [...recentArr, ...histArr]) {
+      const key = `${e.date}::${norm(e.title)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(e);
+    }
+    merged.sort((a, b) => b.date.localeCompare(a.date));
+    return { meta: { count: merged.length }, events: merged };
+  }
 
-    /** Preload a list of sections in parallel (used for KPI strip). */
-    preload: async (keys) => {
-      const results = await Promise.all(keys.map((k) => DataLoader.section(k)));
-      const out = {};
-      keys.forEach((k, i) => { out[k] = results[i]; });
-      return out;
-    },
-
-    clear: () => { cache.clear(); inflight.clear(); },
+  global.DataLoader = {
+    manifest:  () => fetchJSON(`${BASE}/manifest.json`),
+    section:   (key) => fetchJSON(`${BASE}/${key}.json`),
+    events:    () => mergedEvents(),
+    news:      () => fetchJSON(`${BASE}/news.json`),
+    narrative: () => fetchJSON(`${BASE}/narrative.json`),
+    clear:     () => { cache.clear(); inflight.clear(); },
   };
-
-  global.DataLoader = DataLoader;
 })(window);

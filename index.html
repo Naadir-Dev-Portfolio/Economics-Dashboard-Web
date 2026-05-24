@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Live global economics dashboard — equities, bonds, rates, inflation, housing, commodities, FX, employment, and major events." />
-  <meta name="theme-color" content="#06090f" />
+  <meta name="description" content="Live global economics dashboard. Equities, bonds, rates, inflation, housing, commodities, FX, employment, and major events." />
+  <meta name="theme-color" content="#000000" />
   <title>MACRO//OPS — Global Economics Command Center</title>
 
-  <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg" />
+  <link rel="icon" type="image/png" href="assets/img/logo.png" />
+  <link rel="apple-touch-icon" href="assets/img/logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -15,164 +16,283 @@
 </head>
 <body>
 
-  <!-- Scanline overlay for the covert-ops aesthetic -->
   <div class="scanline" aria-hidden="true"></div>
-  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
 
   <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ TOP BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
   <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">◆</div>
-      <div class="brand-text">
-        <h1>MACRO<span class="brand-divider">//</span>OPS</h1>
-        <div class="brand-sub">Global Economics Command Center</div>
+    <div class="topbar-left">
+      <a class="brand" href="#">
+        <img src="assets/img/logo.png" alt="Naadir" class="brand-logo" />
+        <div class="brand-text">
+          <div class="brand-name">MACRO<span class="brand-slash">//</span>OPS</div>
+          <div class="brand-sub">Global Economics Command</div>
+        </div>
+      </a>
+
+      <div class="region-toggle" role="tablist" aria-label="Region focus">
+        <button class="region-btn is-active" data-region="GLOBAL">GLOBAL</button>
+        <button class="region-btn" data-region="UK">UK</button>
+        <button class="region-btn" data-region="US">US</button>
+        <button class="region-btn" data-region="EU">EU</button>
+        <button class="region-btn" data-region="ASIA">ASIA</button>
       </div>
     </div>
 
-    <div class="topbar-actions">
-      <button class="btn-icon" id="btn-events" title="Major events timeline">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6m0 8v6M2 12h6m8 0h6"/><circle cx="12" cy="12" r="3"/></svg>
-        <span>EVENTS</span>
-      </button>
-      <button class="btn-icon" id="btn-collapse-all" title="Collapse all sections">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 9l8-5 8 5M4 15l8 5 8-5"/></svg>
-        <span>COLLAPSE</span>
-      </button>
-      <button class="btn-icon" id="btn-expand-all" title="Expand all sections">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l8 5 8-5M4 18l8-5 8 5"/></svg>
-        <span>EXPAND</span>
-      </button>
-      <div class="status-pill" id="live-status">
-        <span class="dot"></span>
-        <span class="status-label">LIVE</span>
+    <div class="topbar-ticker" id="ticker" aria-label="Live news ticker">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-item ticker-pending">› channel synchronising</span>
       </div>
-      <div class="last-update">
-        <span class="dim">LAST FETCH</span>
-        <span id="last-update">——</span>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock" id="clock-utc"><span class="clock-label">UTC</span><span class="clock-time">--:--</span></div>
+      <div class="status-pill" id="live-status">
+        <span class="status-dot"></span>
+        <span class="status-label">LIVE</span>
       </div>
     </div>
   </header>
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ HERO KPI STRIP ━━━━━━━━━━━━━━━━━━━━━━ -->
-  <section class="kpi-strip" id="kpi-strip" aria-label="Headline indicators">
-    <!-- KPI tiles injected by main.js -->
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ SITUATION REPORT ━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="report" id="report">
+    <div class="report-tag">SITREP · <span id="report-time">—</span></div>
+    <div class="report-body" id="report-body">Bringing channels online…</div>
   </section>
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ NARRATIVE LEAD ━━━━━━━━━━━━━━━━━━━━━━ -->
-  <section class="narrative" id="narrative">
-    <div class="narrative-inner">
-      <div class="narrative-tag">SITUATION REPORT</div>
-      <div class="narrative-text" id="narrative-text">Loading current macro state…</div>
-    </div>
-  </section>
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ MAIN GRID ━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <main class="main-grid">
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ SECTION NAV ━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <nav class="section-nav" id="section-nav" aria-label="Jump to section">
-    <!-- Chips injected by main.js -->
-  </nav>
+    <!-- HERO PANEL -->
+    <section class="hero-panel">
+      <header class="hero-head">
+        <div class="hero-meta">
+          <select class="hero-symbol" id="hero-symbol" aria-label="Hero symbol">
+            <optgroup label="Equities">
+              <option value="FOREXCOM:SPXUSD"  selected>S&amp;P 500</option>
+              <option value="OANDA:NAS100USD">Nasdaq 100</option>
+              <option value="OANDA:UK100GBP">FTSE 100</option>
+              <option value="OANDA:DE30EUR">DAX</option>
+              <option value="OANDA:JP225USD">Nikkei 225</option>
+              <option value="OANDA:HK33HKD">Hang Seng</option>
+              <option value="FOREXCOM:DJI">Dow Jones</option>
+            </optgroup>
+            <optgroup label="Bonds (yields)">
+              <option value="TVC:US10Y">US 10-Year Yield</option>
+              <option value="TVC:US02Y">US 2-Year Yield</option>
+              <option value="TVC:GB10Y">UK 10-Year Gilt</option>
+              <option value="TVC:DE10Y">Germany 10-Year</option>
+              <option value="TVC:JP10Y">Japan 10-Year</option>
+            </optgroup>
+            <optgroup label="Commodities">
+              <option value="TVC:UKOIL">Brent Crude</option>
+              <option value="TVC:USOIL">WTI Crude</option>
+              <option value="TVC:GOLD">Gold</option>
+              <option value="TVC:SILVER">Silver</option>
+              <option value="TVC:NATURALGAS">Natural Gas</option>
+              <option value="COMEX:HG1!">Copper</option>
+            </optgroup>
+            <optgroup label="FX">
+              <option value="FX:GBPUSD">GBP/USD</option>
+              <option value="FX:EURUSD">EUR/USD</option>
+              <option value="FX:USDJPY">USD/JPY</option>
+              <option value="TVC:DXY">DXY Dollar Index</option>
+              <option value="BITSTAMP:BTCUSD">BTC/USD</option>
+            </optgroup>
+            <optgroup label="Volatility">
+              <option value="TVC:VIX">VIX</option>
+            </optgroup>
+          </select>
+          <div class="hero-quote" id="hero-quote">
+            <span class="hero-name" id="hero-name">S&amp;P 500</span>
+            <span class="hero-value" id="hero-value">—</span>
+            <span class="hero-change" id="hero-change">—</span>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <button class="hero-btn" id="hero-tv-toggle" title="Toggle live TradingView vs. archive view">
+            <span class="dot dot-pulse"></span> LIVE
+          </button>
+        </div>
+      </header>
+      <div class="hero-chart" id="hero-chart"></div>
+      <footer class="hero-foot">
+        <div class="hero-annotations" id="hero-annotations" hidden>
+          <span class="ann-label">ANNOTATIONS:</span>
+          <span class="ann-list" id="ann-list"></span>
+        </div>
+        <div class="hero-source">TradingView · annotate via Events panel →</div>
+      </footer>
+    </section>
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ SECTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <main id="sections-container">
-    <!-- Sections injected by main.js -->
+    <!-- RIGHT SIDEBAR -->
+    <aside class="side-panel">
+      <!-- NEWS FEED -->
+      <section class="sub-panel" data-panel="news">
+        <header class="sub-head">
+          <h3>LIVE NEWSWIRE</h3>
+          <span class="sub-count" id="news-count">—</span>
+        </header>
+        <div class="sub-body sub-scroll" id="news-list">
+          <div class="sub-loading">› awaiting wire…</div>
+        </div>
+        <div class="sub-foot">
+          <span class="sub-sources">Reuters · BBC · FT · BoE · Fed · ECB</span>
+        </div>
+      </section>
+
+      <!-- EVENTS -->
+      <section class="sub-panel" data-panel="events">
+        <header class="sub-head">
+          <h3>EVENT TIMELINE</h3>
+          <div class="sub-actions">
+            <button class="sub-btn" data-events-filter="all">ALL</button>
+            <button class="sub-btn is-active" data-events-filter="recent">RECENT</button>
+            <button class="sub-btn" data-events-filter="major">MAJOR</button>
+          </div>
+        </header>
+        <div class="sub-body sub-scroll" id="events-list">
+          <div class="sub-loading">› loading timeline…</div>
+        </div>
+        <div class="sub-foot">
+          <span class="sub-hint">Toggle ☐ → annotate hero chart</span>
+        </div>
+      </section>
+
+      <!-- WORLD CLOCKS -->
+      <section class="sub-panel" data-panel="clocks">
+        <header class="sub-head">
+          <h3>MARKET HOURS</h3>
+        </header>
+        <div class="clocks-grid" id="clocks-grid"></div>
+      </section>
+    </aside>
   </main>
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ EVENTS DRAWER ━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <aside class="drawer" id="events-drawer" aria-hidden="true">
-    <div class="drawer-head">
-      <div>
-        <div class="drawer-tag">CLASSIFIED · TIMELINE</div>
-        <h2>Major Economic Events</h2>
-      </div>
-      <button class="btn-close" id="btn-close-events" aria-label="Close">✕</button>
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ STATUS RIBBON ━━━━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="ribbon" id="ribbon" aria-label="Status ribbon">
+    <button class="ribbon-pause" id="ribbon-pause" title="Pause / resume"><span>⏸</span></button>
+    <div class="ribbon-track" id="ribbon-track">
+      <!-- Filled by JS -->
     </div>
-    <div class="drawer-body" id="events-list"></div>
-  </aside>
-  <div class="drawer-scrim" id="drawer-scrim" hidden></div>
+  </section>
+
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ CATEGORY MATRIX ━━━━━━━━━━━━━━━━━━━━ -->
+  <section class="matrix" id="matrix">
+    <header class="matrix-head">
+      <h2>DRILL DOWN</h2>
+      <div class="matrix-actions">
+        <button class="matrix-btn" id="btn-collapse-all">COLLAPSE ALL</button>
+        <button class="matrix-btn" id="btn-expand-all">EXPAND ALL</button>
+      </div>
+    </header>
+    <div class="matrix-grid" id="matrix-grid">
+      <!-- Category panels injected by JS -->
+    </div>
+  </section>
 
   <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
   <footer class="footer">
     <div class="footer-col">
-      <div class="footer-title">SOURCES</div>
-      <div class="footer-list">
-        FRED · St. Louis Fed · Yahoo Finance · BIS · NBER · Bank of England · ECB
-      </div>
+      <div class="footer-title">DATA</div>
+      <div class="footer-list">FRED · Yahoo Finance · TradingView · BIS · NBER · BoE · ECB</div>
     </div>
     <div class="footer-col">
-      <div class="footer-title">BUILD</div>
-      <div class="footer-list" id="footer-build">data refresh twice daily via GitHub Actions</div>
+      <div class="footer-title">NEWS</div>
+      <div class="footer-list">Reuters · BBC · FT · Bloomberg · BoE · Fed · ECB releases</div>
     </div>
     <div class="footer-col">
-      <div class="footer-title">NOTE</div>
-      <div class="footer-list">For research and education. Not investment advice.</div>
+      <div class="footer-title">REFRESH</div>
+      <div class="footer-list">Data twice daily via GitHub Actions · News hourly · Last: <span id="footer-update">—</span></div>
+    </div>
+    <div class="footer-col">
+      <div class="footer-title">BUILT BY</div>
+      <div class="footer-list"><a href="https://github.com/Naadir-Dev-Portfolio" target="_blank" rel="noopener">Naadir Dev Portfolio</a> · For research only · Not investment advice</div>
     </div>
   </footer>
 
-  <!-- Hidden card template -->
-  <template id="tpl-card">
-    <article class="card" data-series-id="">
-      <header class="card-head">
-        <div class="card-meta">
-          <span class="region-badge"></span>
-          <h3 class="card-title"></h3>
+  <!-- Category panel template -->
+  <template id="tpl-category">
+    <article class="cat-panel" data-section-key="">
+      <header class="cat-head">
+        <div class="cat-head-left">
+          <span class="cat-glyph"></span>
+          <h3 class="cat-title"></h3>
+          <span class="cat-blurb"></span>
         </div>
-        <div class="card-value">
-          <span class="value-num">—</span>
-          <span class="value-unit"></span>
-          <span class="value-change"></span>
+        <div class="cat-head-right">
+          <button class="cat-tv" title="Open in hero chart"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M7 17 L17 7 M9 7 L17 7 L17 15"/></svg></button>
+          <button class="cat-toggle" title="Collapse / expand"><span class="cat-chevron">▾</span></button>
         </div>
       </header>
-      <div class="card-body">
-        <div class="card-chart"></div>
-      </div>
-      <footer class="card-foot">
-        <div class="range-buttons" role="group">
-          <button data-range="1M">1M</button>
-          <button data-range="6M">6M</button>
-          <button data-range="YTD">YTD</button>
-          <button data-range="1Y">1Y</button>
-          <button data-range="5Y">5Y</button>
-          <button data-range="10Y">10Y</button>
-          <button data-range="MAX" class="is-active">MAX</button>
+      <div class="cat-body">
+        <div class="cat-focus">
+          <div class="cat-focus-info">
+            <div class="cat-focus-name">—</div>
+            <div class="cat-focus-stats">
+              <span class="cat-focus-value">—</span>
+              <span class="cat-focus-unit"></span>
+              <span class="cat-focus-change"></span>
+            </div>
+            <div class="cat-focus-source">—</div>
+          </div>
+          <div class="cat-focus-chart"></div>
         </div>
-        <div class="card-source"></div>
-      </footer>
+        <div class="cat-carousel" role="listbox" aria-label="Series in this category">
+          <!-- chips injected here -->
+        </div>
+      </div>
     </article>
   </template>
 
-  <!-- Hidden section template -->
-  <template id="tpl-section">
-    <section class="section" data-section-key="">
-      <button class="section-head">
-        <div class="section-head-left">
-          <span class="section-icon"></span>
-          <h2 class="section-title"></h2>
-          <span class="section-blurb"></span>
-        </div>
-        <div class="section-head-right">
-          <span class="section-count"></span>
-          <span class="chevron">▾</span>
-        </div>
-      </button>
-      <div class="section-body">
-        <div class="cards-grid"></div>
-      </div>
-    </section>
+  <!-- News row template -->
+  <template id="tpl-news">
+    <article class="news-row">
+      <div class="news-meta"><span class="news-source"></span><span class="news-time"></span></div>
+      <div class="news-title"></div>
+    </article>
   </template>
 
-  <!-- Loading screen -->
-  <div class="boot-screen" id="boot-screen">
-    <div class="boot-text">
+  <!-- Event row template -->
+  <template id="tpl-event">
+    <label class="event-row">
+      <input type="checkbox" class="event-check" />
+      <span class="event-dot"></span>
+      <div class="event-content">
+        <div class="event-date"></div>
+        <div class="event-title"></div>
+        <div class="event-blurb"></div>
+        <span class="event-tag"></span>
+      </div>
+    </label>
+  </template>
+
+  <!-- Boot screen -->
+  <div class="boot" id="boot-screen">
+    <img src="assets/img/logo.png" alt="" class="boot-logo" />
+    <div class="boot-name">MACRO<span class="boot-slash">//</span>OPS</div>
+    <div class="boot-lines">
       <div class="boot-line">› INITIALIZING MACRO//OPS</div>
       <div class="boot-line">› ESTABLISHING SECURE CHANNEL</div>
-      <div class="boot-line">› LOADING TIME SERIES…</div>
+      <div class="boot-line">› LOADING TIME SERIES &amp; WIRE FEED…</div>
     </div>
     <div class="boot-bar"><div class="boot-bar-fill"></div></div>
+    <div class="boot-credit">This portfolio was created by <strong>Naadir Dev Portfolio</strong></div>
   </div>
 
-  <!-- ECharts via CDN -->
+  <!-- ECharts via CDN (small charts) -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <!-- TradingView widget loader -->
+  <script src="https://s3.tradingview.com/tv.js"></script>
+
   <script src="assets/js/data-loader.js"></script>
   <script src="assets/js/charts.js"></script>
+  <script src="assets/js/hero.js"></script>
+  <script src="assets/js/news.js"></script>
+  <script src="assets/js/events-timeline.js"></script>
+  <script src="assets/js/ribbon.js"></script>
+  <script src="assets/js/category.js"></script>
+  <script src="assets/js/clocks.js"></script>
   <script src="assets/js/main.js"></script>
 </body>
 </html>

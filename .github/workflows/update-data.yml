@@ -2,10 +2,18 @@ name: Refresh economic data
 
 on:
   schedule:
-    # Twice daily: 06:30 and 18:30 UTC.
-    # US markets close ~21:00 UTC; FRED publishes overnight.
-    - cron: "30 6,18 * * *"
+    # Data twice daily. News every hour (separate workflow could split, but
+    # cheaper to combine into one cron).
+    - cron: "30 6,18 * * *"   # full refresh: data + news
+    - cron: "0 */1 * * *"     # news only (skips heavy data work)
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Which fetcher to run"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, data, news]
   push:
     branches: [main]
     paths:
@@ -38,10 +46,32 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
-      - name: Fetch data
+      - name: Decide fetch mode
+        id: mode
+        run: |
+          # Determine what to run:
+          #  - manual dispatch  → uses inputs.mode
+          #  - hourly cron      → news only
+          #  - 6/18 cron        → all
+          #  - push             → all (so config changes take effect immediately)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ inputs.mode }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 */1 * * *" ]; then
+            echo "mode=news" >> $GITHUB_OUTPUT
+          else
+            echo "mode=all" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch market & macro data
+        if: steps.mode.outputs.mode != 'news'
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python scripts/fetch_data.py
+
+      - name: Fetch news & live events
+        if: steps.mode.outputs.mode != 'data'
+        run: python scripts/fetch_news.py
+        continue-on-error: true
 
       - name: Commit refreshed data
         run: |
@@ -52,6 +82,8 @@ jobs:
             echo "No data changes."
           else
             ts=$(date -u +"%Y-%m-%d %H:%MZ")
-            git commit -m "chore(data): scheduled refresh ${ts}"
+            git commit -m "chore(data): scheduled refresh ${ts} [${{ steps.mode.outputs.mode }}]"
+            # Pull rebase in case the other cron raced us
+            git pull --rebase --autostash origin main || true
             git push
           fi
