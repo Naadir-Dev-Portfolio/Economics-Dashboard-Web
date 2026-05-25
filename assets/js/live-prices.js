@@ -88,7 +88,6 @@
         <span class="lt-arrow">·</span>
         <span class="lt-chg-num">—</span>
       </div>
-      <div class="lt-foot">awaiting tick · click → hero</div>
     `;
     el.addEventListener('click', () => {
       if (spec.tv && global.Hero) {
@@ -201,7 +200,6 @@
     const chgArrow = el.querySelector('.lt-arrow');
     const chgNum = el.querySelector('.lt-chg-num');
     const chgRow = el.querySelector('.lt-chg');
-    const foot = el.querySelector('.lt-foot');
 
     const prev = lastPrice[el.dataset.id];
     if (prev != null && !isNaN(prev) && price !== prev) {
@@ -224,7 +222,6 @@
       chgArrow.textContent = '·';
       chgNum.textContent = '—';
     }
-    foot.textContent = 'live · click → hero';
   }
 
   function escapeHtml(s) {

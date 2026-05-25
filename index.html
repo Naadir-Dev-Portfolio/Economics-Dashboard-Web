@@ -96,14 +96,14 @@
         </div>
 
         <div class="nav-group" data-group="markets">
-          <div class="nav-group-title"><span class="nav-glyph">📈</span><span class="nav-label">MARKETS</span></div>
+          <div class="nav-group-title"><span class="nav-glyph">↗</span><span class="nav-label">MARKETS</span></div>
           <a class="nav-item" data-target="cat-markets" data-icon="↗"><span class="nav-glyph">↗</span><span class="nav-label">Equities</span></a>
           <a class="nav-item" data-target="cat-bonds"   data-icon="~"><span class="nav-glyph">~</span><span class="nav-label">Bonds &amp; Yields</span></a>
           <a class="nav-item" data-target="cat-fx"      data-icon="⇄"><span class="nav-glyph">⇄</span><span class="nav-label">Currencies &amp; Crypto</span></a>
         </div>
 
         <div class="nav-group" data-group="economy">
-          <div class="nav-group-title"><span class="nav-glyph">🏛</span><span class="nav-label">ECONOMY</span></div>
+          <div class="nav-group-title"><span class="nav-glyph">◭</span><span class="nav-label">ECONOMY</span></div>
           <a class="nav-item" data-target="cat-rates"      data-icon="◭"><span class="nav-glyph">◭</span><span class="nav-label">Interest Rates</span></a>
           <a class="nav-item" data-target="cat-inflation"  data-icon="✦"><span class="nav-glyph">✦</span><span class="nav-label">Inflation</span></a>
           <a class="nav-item" data-target="cat-money"      data-icon="$"><span class="nav-glyph">$</span><span class="nav-label">Money Supply / M2</span></a>
@@ -112,22 +112,22 @@
         </div>
 
         <div class="nav-group" data-group="assets">
-          <div class="nav-group-title"><span class="nav-glyph">🏠</span><span class="nav-label">REAL ASSETS</span></div>
+          <div class="nav-group-title"><span class="nav-glyph">⌂</span><span class="nav-label">REAL ASSETS</span></div>
           <a class="nav-item" data-target="cat-housing"     data-icon="⌂"><span class="nav-glyph">⌂</span><span class="nav-label">Housing &amp; Mortgages</span></a>
           <a class="nav-item" data-target="cat-commodities" data-icon="◉"><span class="nav-glyph">◉</span><span class="nav-label">Commodities &amp; Fuel</span></a>
         </div>
 
         <div class="nav-group" data-group="stress">
-          <div class="nav-group-title"><span class="nav-glyph">⚠</span><span class="nav-label">STRESS &amp; EVENTS</span></div>
+          <div class="nav-group-title"><span class="nav-glyph">△</span><span class="nav-label">STRESS &amp; EVENTS</span></div>
           <a class="nav-item" data-target="cat-risk"  data-icon="!"><span class="nav-glyph">!</span><span class="nav-label">Risk &amp; Vol</span></a>
-          <a class="nav-item" data-target="sub-events" data-icon="📅"><span class="nav-glyph">📅</span><span class="nav-label">Events Timeline</span></a>
-          <a class="nav-item" data-target="sub-news"   data-icon="📰"><span class="nav-glyph">📰</span><span class="nav-label">Live Newswire</span></a>
+          <a class="nav-item" data-target="sub-events" data-icon="▤"><span class="nav-glyph">▤</span><span class="nav-label">Events Timeline</span></a>
+          <a class="nav-item" data-target="sub-news"   data-icon="≡"><span class="nav-glyph">≡</span><span class="nav-label">Live Newswire</span></a>
         </div>
 
         <div class="nav-group" data-group="learn">
-          <div class="nav-group-title"><span class="nav-glyph">📚</span><span class="nav-label">RESEARCH</span></div>
-          <a class="nav-item nav-modal" data-modal="calendar" data-icon="📅"><span class="nav-glyph">📅</span><span class="nav-label">Economic Calendar</span></a>
-          <a class="nav-item nav-modal" data-modal="education" data-icon="🎓"><span class="nav-glyph">🎓</span><span class="nav-label">Learn / Glossary</span></a>
+          <div class="nav-group-title"><span class="nav-glyph">◈</span><span class="nav-label">RESEARCH</span></div>
+          <a class="nav-item nav-modal" data-modal="calendar"  data-icon="▦"><span class="nav-glyph">▦</span><span class="nav-label">Economic Calendar</span></a>
+          <a class="nav-item nav-modal" data-modal="education" data-icon="⊕"><span class="nav-glyph">⊕</span><span class="nav-label">Learn / Glossary</span></a>
         </div>
       </nav>
 
@@ -443,9 +443,15 @@
           <div class="modal-sub">High-impact releases for the next ~180 days. Click an event to add to your calendar.</div>
         </div>
         <div class="modal-actions">
+          <div class="cal-nav">
+            <button class="cal-nav-btn" id="cal-prev" title="Previous month">‹</button>
+            <span class="cal-nav-month" id="cal-nav-month">—</span>
+            <button class="cal-nav-btn" id="cal-next" title="Next month">›</button>
+            <button class="cal-nav-btn cal-nav-today" id="cal-today" title="Jump to today">TODAY</button>
+          </div>
           <div class="calendar-toggle">
-            <button class="cv-btn is-active" data-view="list">LIST</button>
-            <button class="cv-btn" data-view="month">MONTH</button>
+            <button class="cv-btn is-active" data-view="month">MONTH</button>
+            <button class="cv-btn" data-view="list">LIST</button>
           </div>
           <button class="modal-close" data-close-modal>✕</button>
         </div>

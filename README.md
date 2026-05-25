@@ -1,4 +1,11 @@
-# MACRO//OPS — Global Economics Dashboard
+# Naadir's Macro Economic Ops Dashboard
+
+> 📘 **First-time setup?** Walk through [`SETUP.md`](SETUP.md) — ~8 minutes from a fresh repo to a self-updating live site.
+>
+> 📊 **Want to know where every number comes from?** [`DATA_SOURCES.md`](DATA_SOURCES.md) documents all 12 data pipelines, what they fetch, and how reliable each is.
+
+---
+
 
 [![Refresh data](https://github.com/Naadir/Economics-Dashboard-Web/actions/workflows/update-data.yml/badge.svg)](.github/workflows/update-data.yml)
 

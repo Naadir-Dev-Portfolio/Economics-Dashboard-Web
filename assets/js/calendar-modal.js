@@ -2,10 +2,10 @@
  * calendar-modal.js — the economic-calendar popup.
  *
  * Reads data/calendar.json. Two views:
+ *   • MONTH — full calendar grid with month nav (default)
  *   • LIST  — grouped by day, every upcoming release
- *   • MONTH — calendar grid of the next month
  *
- * Clicking a row pops the add-to-calendar mini-modal with:
+ * Clicking a release pops the add-to-calendar mini-modal with:
  *   • Google Calendar quick-add link
  *   • Outlook quick-add link
  *   • Apple / Thunderbird .ics download
@@ -16,7 +16,8 @@
 
   const state = {
     events: [],
-    view: 'list',
+    view: 'month',                              // default to month view
+    cursor: new Date(),                          // current month being viewed
   };
 
   function init(calendar) {
@@ -38,7 +39,11 @@
       });
     });
 
-    // Close handlers (shared modal scrim + close button)
+    // Month nav
+    document.getElementById('cal-prev')?.addEventListener('click', () => shiftMonth(-1));
+    document.getElementById('cal-next')?.addEventListener('click', () => shiftMonth(+1));
+    document.getElementById('cal-today')?.addEventListener('click', () => { state.cursor = new Date(); render(); });
+
     bindModalClose('modal-calendar');
     bindModalClose('modal-event-add');
   }
@@ -55,12 +60,19 @@
     const modal = document.getElementById('modal-calendar');
     if (!modal) return;
     modal.hidden = false;
+    state.cursor = new Date();
+    render();
+  }
+
+  function shiftMonth(delta) {
+    state.cursor = new Date(state.cursor.getFullYear(), state.cursor.getMonth() + delta, 1);
     render();
   }
 
   function render() {
     const body = document.getElementById('calendar-body');
     if (!body) return;
+    updateMonthLabel();
     if (!state.events.length) {
       body.innerHTML = '<div class="modal-loading">› no events — run scripts/fetch_calendar.py</div>';
       return;
@@ -69,6 +81,12 @@
     else renderMonth(body);
   }
 
+  function updateMonthLabel() {
+    const el = document.getElementById('cal-nav-month');
+    if (el) el.textContent = state.cursor.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }).toUpperCase();
+  }
+
+  // ─────────────────────────────────────────────────────── LIST view
   function renderList(body) {
     const now = Date.now();
     const future = state.events.filter(e => new Date(e.datetime).getTime() >= now - 3_600_000)
@@ -123,13 +141,15 @@
     return `in ${Math.round(days/30)} months`;
   }
 
+  // ─────────────────────────────────────────────────────── MONTH view
   function renderMonth(body) {
-    const now = new Date();
-    const year = now.getFullYear(), month = now.getMonth();
+    const year = state.cursor.getFullYear();
+    const month = state.cursor.getMonth();
     const first = new Date(Date.UTC(year, month, 1));
     const last  = new Date(Date.UTC(year, month + 1, 0));
-    const startWeekday = (first.getUTCDay() + 6) % 7;   // 0 = Monday
-    const totalCells = Math.ceil((startWeekday + last.getUTCDate()) / 7) * 7;
+    const startWeekday = (first.getUTCDay() + 6) % 7;             // 0 = Monday
+    const numWeeks = Math.ceil((startWeekday + last.getUTCDate()) / 7);
+    const totalCells = numWeeks * 7;
 
     const days = [];
     for (let i = 0; i < totalCells; i++) {
@@ -150,24 +170,49 @@
       const iso = d.toISOString().slice(0, 10);
       const inMonth = d.getUTCMonth() === month;
       const isToday = iso === todayKey;
-      const evts = eventsByDay[iso] || [];
-      const items = evts.slice(0, 4).map(e => {
+      const evts = (eventsByDay[iso] || []).sort((a, b) => a.datetime.localeCompare(b.datetime));
+      const shown = evts.slice(0, 3);
+      const items = shown.map(e => {
         const eid = encodeURIComponent(e.id);
-        return `<span class="cm-evt" data-event-id="${eid}" title="${escapeHtml(e.title)}">${escapeHtml(e.title)}</span>`;
+        const time = new Date(e.datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const tag = e.tag || 'other';
+        return `<span class="cm-evt tag-${tag}" data-event-id="${eid}" title="${escapeHtml(e.title)} · ${time}">
+          <span class="cm-evt-time">${time}</span>
+          <span class="cm-evt-title">${escapeHtml(e.title)}</span>
+        </span>`;
       }).join('');
-      const more = evts.length > 4 ? `<span class="cm-evt" style="background:transparent;border-left:none;color:var(--tx-3)">+${evts.length-4} more</span>` : '';
-      return `<div class="cal-month-cell${inMonth ? '' : ' other-month'}${isToday ? ' is-today' : ''}">
-        <div class="cm-d">${d.getUTCDate()}</div>${items}${more}
+      const more = evts.length > 3 ? `<span class="cm-evt cm-evt-more" data-day="${iso}">+${evts.length-3} more</span>` : '';
+      const countBadge = evts.length ? `<span class="cm-d-count">${evts.length}</span>` : '';
+      return `<div class="cal-month-cell${inMonth ? '' : ' other-month'}${isToday ? ' is-today' : ''}" data-day="${iso}">
+        <div class="cm-d"><span>${d.getUTCDate()}</span>${countBadge}</div>
+        ${items}${more}
       </div>`;
     }).join('');
-    body.innerHTML = `<div class="cal-month">${heads}${cells}</div>`;
-    body.querySelectorAll('[data-event-id]').forEach(el => {
-      const id = decodeURIComponent(el.dataset.eventId);
-      el.addEventListener('click', () => openAddModal(state.events.find(e => e.id === id)));
+
+    const sixWeekClass = numWeeks === 6 ? ' is-six-weeks' : ' is-five-weeks';
+    body.innerHTML = `<div class="cal-month-grid-wrap"><div class="cal-month${sixWeekClass}">${heads}${cells}</div></div>`;
+
+    body.querySelectorAll('.cm-evt[data-event-id]').forEach(el => {
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const id = decodeURIComponent(el.dataset.eventId);
+        openAddModal(state.events.find(e => e.id === id));
+      });
+    });
+    body.querySelectorAll('.cm-evt-more').forEach(el => {
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        // Show all events for that day via the list view filtered to that date.
+        const day = el.dataset.day;
+        const dayEvents = state.events.filter(e => e.datetime.slice(0,10) === day);
+        if (!dayEvents.length) return;
+        // Just open the first one — the list of the day already shows in the cell.
+        openAddModal(dayEvents[0]);
+      });
     });
   }
 
-  // ─────────────────────────── ADD-TO-CAL ───────────────────────────
+  // ─────────────────────────── ADD-TO-CALENDAR ───────────────────────────
   function openAddModal(event) {
     if (!event) return;
     const modal = document.getElementById('modal-event-add');
@@ -182,7 +227,6 @@
       + ' · ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
     document.getElementById('evadd-desc').textContent = event.description || '';
 
-    // Google Calendar quick add
     const fmt = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
     const gcalUrl = 'https://www.google.com/calendar/render?action=TEMPLATE'
       + '&text=' + encodeURIComponent(event.title)
@@ -191,7 +235,6 @@
       + '&location=' + encodeURIComponent(event.source || '');
     document.getElementById('evadd-google').href = gcalUrl;
 
-    // Outlook web
     const outlookUrl = 'https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent'
       + '&subject=' + encodeURIComponent(event.title)
       + '&startdt=' + dt.toISOString()
@@ -199,10 +242,8 @@
       + '&body=' + encodeURIComponent(event.description || '');
     document.getElementById('evadd-outlook').href = outlookUrl;
 
-    // .ics download
     document.getElementById('evadd-ics').onclick = () => downloadIcs(event);
 
-    // Source link
     const src = document.getElementById('evadd-source');
     if (event.source_url) {
       src.href = event.source_url;

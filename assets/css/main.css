@@ -74,10 +74,40 @@ a { color: var(--tx-1); text-decoration: none; }
 a:hover { color: var(--rd-0); }
 button { font-family: inherit; }
 ::selection { background: var(--rd-soft); color: var(--rd-0); }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--bg-1); }
-::-webkit-scrollbar-thumb { background: var(--bd-2); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--bd-3); }
+
+/* ─── Custom scrollbars — covert dark theme everywhere ─── */
+* { scrollbar-width: thin; scrollbar-color: var(--bd-3) transparent; }
+*:hover { scrollbar-color: var(--rd-line) transparent; }
+
+::-webkit-scrollbar {
+  width: 8px; height: 8px;
+  background: transparent;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.4);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bd-3);
+  border-radius: 0;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.15s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rd-1);
+}
+::-webkit-scrollbar-corner { background: transparent; }
+/* Thinner variant for tight rows (chip carousels, ribbon, etc.) */
+.kpi-row::-webkit-scrollbar,
+.cat-carousel::-webkit-scrollbar,
+.live-row::-webkit-scrollbar { height: 4px; }
+.kpi-row::-webkit-scrollbar-thumb,
+.cat-carousel::-webkit-scrollbar-thumb,
+.live-row::-webkit-scrollbar-thumb { background: var(--bd-2); }
+.kpi-row::-webkit-scrollbar-thumb:hover,
+.cat-carousel::-webkit-scrollbar-thumb:hover,
+.live-row::-webkit-scrollbar-thumb:hover { background: var(--rd-line); }
 
 /* ─── decorative layers ─── */
 .scanline {
@@ -408,6 +438,10 @@ button { font-family: inherit; }
   color: var(--tx-3);
 }
 .nav-group-title .nav-glyph { font-size: 12px; color: var(--rd-0); }
+/* Force any glyph rendered text-mode (not emoji) for the covert aesthetic */
+.nav-glyph, .edu-glyph, .cat-glyph,
+.cm-evt::before, .live-tag .dot, .ribbon-tile .rt-name,
+.boot-name, .brand-name { font-variant-emoji: text; }
 
 .nav-item {
   display: flex; align-items: center; gap: 12px;
@@ -513,12 +547,12 @@ button { font-family: inherit; }
 .live-row-crypto { margin-top: 10px; }
 .live-tile {
   background: var(--bg-2);
-  padding: 10px 12px 11px;
-  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 12px 9px;
+  display: flex; flex-direction: column; gap: 2px;
   cursor: pointer;
   transition: background 0.12s ease;
   position: relative;
-  min-height: 78px;
+  min-height: 60px;
 }
 .live-tile:hover { background: var(--bg-3); }
 .live-tile.is-flash-up   { animation: flashUp 0.6s ease; }
@@ -568,12 +602,7 @@ button { font-family: inherit; }
 .lt-chg .lt-arrow.up   { color: #4ade80; }
 .lt-chg .lt-arrow.down { color: var(--rd-0); }
 .lt-chg.neg            { color: var(--rd-0); }
-.lt-foot {
-  font-family: var(--ff-mono);
-  font-size: 9px; color: var(--tx-dim);
-  letter-spacing: 0.06em;
-  margin-top: 2px;
-}
+.lt-foot { display: none; }
 
 .live-crypto-wrap { margin-top: 6px; }
 .live-crypto-toggle {
@@ -1400,6 +1429,47 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
 .cv-btn:hover { color: var(--tx-0); }
 .cv-btn.is-active { background: var(--rd-soft); color: var(--rd-0); }
 
+/* Month navigation in calendar modal */
+.cal-nav {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--bd-2);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+.cal-nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--tx-1);
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  font-weight: 500;
+  width: 26px; height: 26px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all 0.12s ease;
+}
+.cal-nav-btn:hover { background: var(--bg-3); color: var(--rd-0); }
+.cal-nav-month {
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  color: var(--tx-0);
+  letter-spacing: 0.1em;
+  padding: 0 10px;
+  min-width: 130px;
+  text-align: center;
+}
+.cal-nav-today {
+  width: auto;
+  padding: 0 10px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--rd-0);
+  border-left: 1px solid var(--bd-2);
+  margin-left: 4px;
+}
+
 .cal-list { display: flex; flex-direction: column; gap: 8px; }
 .cal-day-head {
   display: flex; align-items: baseline; gap: 12px;
@@ -1458,50 +1528,111 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
 }
 .cal-row:hover .cal-row-add { color: var(--rd-0); border-color: var(--rd-line); }
 
-/* Month grid */
+/* ─── Month grid (default view) ─── */
+.cal-month-grid-wrap {
+  display: flex; flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
 .cal-month {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
   gap: 1px;
   background: var(--bd-1);
   border: 1px solid var(--bd-2);
   border-radius: var(--radius);
   overflow: hidden;
+  flex: 1; min-height: 0;
 }
+.cal-month.is-six-weeks { grid-template-rows: 36px repeat(6, 1fr); }
+.cal-month.is-five-weeks { grid-template-rows: 36px repeat(5, 1fr); }
 .cal-month-head {
   background: var(--bg-2);
-  padding: 8px;
+  padding: 9px 8px;
   font-family: var(--ff-mono);
-  font-size: 10px; letter-spacing: 0.14em;
+  font-size: 10px; letter-spacing: 0.18em;
   color: var(--rd-0);
   text-align: center;
 }
 .cal-month-cell {
   background: var(--bg-1);
-  padding: 8px;
-  min-height: 90px;
-  display: flex; flex-direction: column; gap: 4px;
+  padding: 6px 6px 8px;
+  min-height: 110px;
+  display: flex; flex-direction: column; gap: 3px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.12s ease;
 }
-.cal-month-cell.other-month { background: var(--bg-0); }
-.cal-month-cell.is-today { background: rgba(220,38,38,0.06); }
+.cal-month-cell:hover { background: var(--bg-2); }
+.cal-month-cell.other-month {
+  background: var(--bg-0);
+  opacity: 0.5;
+}
+.cal-month-cell.other-month:hover { background: var(--bg-1); opacity: 0.8; }
+.cal-month-cell.is-today {
+  background: rgba(220,38,38,0.06);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+}
 .cal-month-cell .cm-d {
   font-family: var(--ff-mono);
-  font-size: 11px; color: var(--tx-2);
+  font-size: 12px; color: var(--tx-2);
   font-variant-numeric: tabular-nums;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2px;
 }
-.cal-month-cell.is-today .cm-d { color: var(--rd-0); font-weight: 600; }
+.cal-month-cell.is-today .cm-d { color: var(--rd-0); font-weight: 700; }
+.cm-d-count {
+  font-size: 9px;
+  color: var(--tx-3);
+  letter-spacing: 0.08em;
+}
+.cal-month-cell.is-today .cm-d-count { color: var(--rd-0); }
 .cal-month-cell .cm-evt {
-  display: block;
+  display: flex; align-items: center; gap: 5px;
   font-size: 10px;
   color: var(--tx-1);
-  padding: 2px 4px;
+  padding: 3px 5px;
   background: var(--bg-2);
   border-radius: 2px;
   cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   border-left: 2px solid var(--rd-0);
+  line-height: 1.3;
+  font-family: var(--ff-sans);
+  transition: all 0.12s ease;
 }
-.cal-month-cell .cm-evt:hover { background: var(--bg-3); }
+.cal-month-cell .cm-evt:hover {
+  background: var(--bg-3);
+  border-left-color: #ff7780;
+  color: var(--tx-0);
+}
+.cm-evt-time {
+  font-family: var(--ff-mono);
+  font-size: 9px;
+  color: var(--tx-3);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.cm-evt-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Tag-based left border colours */
+.cal-month-cell .cm-evt.tag-monetary    { border-left-color: var(--tx-0); }
+.cal-month-cell .cm-evt.tag-inflation   { border-left-color: #ffb454; }
+.cal-month-cell .cm-evt.tag-employment  { border-left-color: #6ab7ff; }
+.cal-month-cell .cm-evt.tag-growth      { border-left-color: #4ade80; }
+.cal-month-cell .cm-evt.tag-money       { border-left-color: #c084fc; }
+.cal-month-cell .cm-evt.tag-energy      { border-left-color: #ff7780; }
+.cal-month-cell .cm-evt-more {
+  font-family: var(--ff-mono);
+  font-size: 9px;
+  color: var(--tx-3);
+  background: transparent;
+  border-left: 2px solid var(--bd-2);
+  letter-spacing: 0.08em;
+}
 
 /* Add-to-calendar mini */
 .evadd-desc {
