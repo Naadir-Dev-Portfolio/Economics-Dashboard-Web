@@ -37,14 +37,16 @@
 
   // mapping into the hero's TradingView symbols (for clicks)
   const TO_TV = {
-    sp500: 'FOREXCOM:SPXUSD', ftse100: 'OANDA:UK100GBP', dax: 'OANDA:DE30EUR',
-    nikkei: 'OANDA:JP225USD', hangseng: 'OANDA:HK33HKD', nasdaq: 'OANDA:NAS100USD',
+    sp500: 'SP:SPX', ftse100: 'TVC:UKX', dax: 'XETR:DAX',
+    nikkei: 'TVC:NI225', hangseng: 'TVC:HSI', nasdaq: 'NASDAQ:IXIC',
     us_10y: 'TVC:US10Y', uk_10y: 'TVC:GB10Y', de_10y: 'TVC:DE10Y',
     oil_brent: 'TVC:UKOIL', oil_wti: 'TVC:USOIL', gold: 'TVC:GOLD',
-    natgas: 'TVC:NATURALGAS', copper: 'COMEX:HG1!',
+    natgas: 'TVC:NATURALGAS', copper: 'CAPITALCOM:COPPER',
     gbp_usd: 'FX:GBPUSD', eur_usd: 'FX:EURUSD', usd_jpy: 'FX:USDJPY',
-    dxy: 'TVC:DXY', btc_usd: 'BITSTAMP:BTCUSD',
+    dxy: 'TVC:DXY', btc_usd: 'COINBASE:BTCUSD',
     vix: 'TVC:VIX',
+    fed_funds: 'ECONOMICS:USINTR', boe_rate: 'ECONOMICS:GBINTR', ecb_rate: 'ECONOMICS:EUINTR',
+    us_cpi_yoy: 'ECONOMICS:USIRYY', uk_cpi_yoy: 'ECONOMICS:GBIRYY',
   };
 
   const sparklines = [];

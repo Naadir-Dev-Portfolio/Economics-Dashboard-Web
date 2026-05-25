@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Live global economics dashboard. Equities, bonds, rates, inflation, housing, commodities, FX, employment, and major events." />
   <meta name="theme-color" content="#000000" />
-  <title>MACRO//OPS — Global Economics Command Center</title>
+  <title>Naadir's Macro Economic Ops Dashboard</title>
 
   <link rel="icon" type="image/png" href="assets/img/logo.png" />
   <link rel="apple-touch-icon" href="assets/img/logo.png" />
@@ -22,11 +22,14 @@
   <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ TOP BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
   <header class="topbar">
     <div class="topbar-left">
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation sidebar">
+        <span></span><span></span><span></span>
+      </button>
       <a class="brand" href="#">
         <img src="assets/img/logo.png" alt="Naadir" class="brand-logo" />
         <div class="brand-text">
-          <div class="brand-name">MACRO<span class="brand-slash">//</span>OPS</div>
-          <div class="brand-sub">Global Economics Command</div>
+          <div class="brand-name">Naadir's <span class="brand-accent">Macro Economic Ops</span> Dashboard</div>
+          <div class="brand-sub">Live global economics command · UK · US · EU · Asia</div>
         </div>
       </a>
 
@@ -54,58 +57,154 @@
     </div>
   </header>
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ SITUATION REPORT ━━━━━━━━━━━━━━━━━━━━ -->
-  <section class="report" id="report">
-    <div class="report-tag">SITREP · <span id="report-time">—</span></div>
-    <div class="report-body" id="report-body">Bringing channels online…</div>
-  </section>
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ MAIN APP SHELL ━━━━━━━━━━━━━━━━━━━━━ -->
+  <div class="app-shell">
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ KPI STRIP ━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-  <section class="kpi-row" id="kpi-row" aria-label="Headline indicators">
-    <!-- Tiles injected by main.js -->
-  </section>
+    <!-- ━━━━━━━━━━━━━━ LEFT NAVIGATION SIDEBAR ━━━━━━━━━━━━━━ -->
+    <aside class="nav-sidebar" id="nav-sidebar" aria-label="Section navigation">
+      <div class="nav-head">
+        <div class="nav-head-title">NAVIGATION</div>
+        <button class="nav-collapse" id="nav-collapse" title="Collapse sidebar">‹</button>
+      </div>
 
-  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ MAIN GRID ━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+      <nav class="nav-tree" id="nav-tree">
+        <div class="nav-group" data-group="hero">
+          <div class="nav-group-title"><span class="nav-glyph">◎</span><span class="nav-label">HEADLINE</span></div>
+          <a class="nav-item" data-target="hero-panel" data-icon="▶"><span class="nav-glyph">▶</span><span class="nav-label">Hero Chart</span></a>
+          <a class="nav-item" data-target="kpi-row"    data-icon="◉"><span class="nav-glyph">◉</span><span class="nav-label">Key Indicators</span></a>
+        </div>
+
+        <div class="nav-group" data-group="markets">
+          <div class="nav-group-title"><span class="nav-glyph">📈</span><span class="nav-label">MARKETS</span></div>
+          <a class="nav-item" data-target="cat-markets" data-icon="↗"><span class="nav-glyph">↗</span><span class="nav-label">Equities</span></a>
+          <a class="nav-item" data-target="cat-bonds"   data-icon="~"><span class="nav-glyph">~</span><span class="nav-label">Bonds &amp; Yields</span></a>
+          <a class="nav-item" data-target="cat-fx"      data-icon="⇄"><span class="nav-glyph">⇄</span><span class="nav-label">Currencies &amp; Crypto</span></a>
+        </div>
+
+        <div class="nav-group" data-group="economy">
+          <div class="nav-group-title"><span class="nav-glyph">🏛</span><span class="nav-label">ECONOMY</span></div>
+          <a class="nav-item" data-target="cat-rates"      data-icon="◭"><span class="nav-glyph">◭</span><span class="nav-label">Interest Rates</span></a>
+          <a class="nav-item" data-target="cat-inflation"  data-icon="✦"><span class="nav-glyph">✦</span><span class="nav-label">Inflation</span></a>
+          <a class="nav-item" data-target="cat-money"      data-icon="$"><span class="nav-glyph">$</span><span class="nav-label">Money Supply / M2</span></a>
+          <a class="nav-item" data-target="cat-macro"      data-icon="◰"><span class="nav-glyph">◰</span><span class="nav-label">Growth &amp; Output</span></a>
+          <a class="nav-item" data-target="cat-employment" data-icon="◯"><span class="nav-glyph">◯</span><span class="nav-label">Employment</span></a>
+        </div>
+
+        <div class="nav-group" data-group="assets">
+          <div class="nav-group-title"><span class="nav-glyph">🏠</span><span class="nav-label">REAL ASSETS</span></div>
+          <a class="nav-item" data-target="cat-housing"     data-icon="⌂"><span class="nav-glyph">⌂</span><span class="nav-label">Housing &amp; Mortgages</span></a>
+          <a class="nav-item" data-target="cat-commodities" data-icon="◉"><span class="nav-glyph">◉</span><span class="nav-label">Commodities &amp; Fuel</span></a>
+        </div>
+
+        <div class="nav-group" data-group="stress">
+          <div class="nav-group-title"><span class="nav-glyph">⚠</span><span class="nav-label">STRESS &amp; EVENTS</span></div>
+          <a class="nav-item" data-target="cat-risk"  data-icon="!"><span class="nav-glyph">!</span><span class="nav-label">Risk &amp; Vol</span></a>
+          <a class="nav-item" data-target="sub-events" data-icon="📅"><span class="nav-glyph">📅</span><span class="nav-label">Events Timeline</span></a>
+          <a class="nav-item" data-target="sub-news"   data-icon="📰"><span class="nav-glyph">📰</span><span class="nav-label">Live Newswire</span></a>
+        </div>
+      </nav>
+
+      <div class="nav-foot">
+        <div class="nav-foot-text">137+ series · 12 sections</div>
+      </div>
+    </aside>
+
+    <!-- ━━━━━━━━━━━━━━ MAIN CONTENT COLUMN ━━━━━━━━━━━━━━ -->
+    <div class="content-col">
+
+      <!-- SITUATION REPORT -->
+      <section class="report" id="report">
+        <div class="report-tag">SITREP · <span id="report-time">—</span></div>
+        <div class="report-body" id="report-body">Bringing channels online…</div>
+      </section>
+
+      <!-- KPI STRIP -->
+      <section class="kpi-row" id="kpi-row" aria-label="Headline indicators">
+        <!-- Tiles injected by main.js -->
+      </section>
+
   <main class="main-grid">
 
     <!-- HERO PANEL -->
-    <section class="hero-panel">
+    <section class="hero-panel" id="hero-panel">
       <header class="hero-head">
         <div class="hero-meta">
           <select class="hero-symbol" id="hero-symbol" aria-label="Hero symbol">
-            <optgroup label="Equities">
-              <option value="FOREXCOM:SPXUSD"  selected>S&amp;P 500</option>
-              <option value="OANDA:NAS100USD">Nasdaq 100</option>
-              <option value="OANDA:UK100GBP">FTSE 100</option>
-              <option value="OANDA:DE30EUR">DAX</option>
-              <option value="OANDA:JP225USD">Nikkei 225</option>
-              <option value="OANDA:HK33HKD">Hang Seng</option>
-              <option value="FOREXCOM:DJI">Dow Jones</option>
+            <optgroup label="Equity indices">
+              <option value="SP:SPX" selected>S&amp;P 500</option>
+              <option value="DJ:DJI">Dow Jones Industrial</option>
+              <option value="NASDAQ:NDX">Nasdaq 100</option>
+              <option value="NASDAQ:IXIC">Nasdaq Composite</option>
+              <option value="TVC:RUT">Russell 2000</option>
+              <option value="TVC:UKX">FTSE 100 (UK)</option>
+              <option value="TVC:MCX">FTSE 250 (UK)</option>
+              <option value="XETR:DAX">DAX 40 (Germany)</option>
+              <option value="TVC:CAC40">CAC 40 (France)</option>
+              <option value="TVC:SX5E">Euro Stoxx 50</option>
+              <option value="TVC:IBEX">IBEX 35 (Spain)</option>
+              <option value="TVC:NI225">Nikkei 225 (Japan)</option>
+              <option value="TVC:HSI">Hang Seng (Hong Kong)</option>
+              <option value="SSE:000001">Shanghai Composite</option>
+              <option value="ASX:XJO">ASX 200 (Australia)</option>
+              <option value="BSE:SENSEX">BSE Sensex (India)</option>
+              <option value="TSX:TSX">S&amp;P/TSX (Canada)</option>
+              <option value="BMFBOVESPA:IBOV">Bovespa (Brazil)</option>
             </optgroup>
-            <optgroup label="Bonds (yields)">
-              <option value="TVC:US10Y">US 10-Year Yield</option>
-              <option value="TVC:US02Y">US 2-Year Yield</option>
+            <optgroup label="Sovereign yields">
+              <option value="TVC:US02Y">US 2-Year Treasury</option>
+              <option value="TVC:US05Y">US 5-Year Treasury</option>
+              <option value="TVC:US10Y">US 10-Year Treasury</option>
+              <option value="TVC:US30Y">US 30-Year Treasury</option>
+              <option value="TVC:GB02Y">UK 2-Year Gilt</option>
               <option value="TVC:GB10Y">UK 10-Year Gilt</option>
-              <option value="TVC:DE10Y">Germany 10-Year</option>
-              <option value="TVC:JP10Y">Japan 10-Year</option>
+              <option value="TVC:DE10Y">Germany 10-Year Bund</option>
+              <option value="TVC:FR10Y">France 10-Year OAT</option>
+              <option value="TVC:IT10Y">Italy 10-Year BTP</option>
+              <option value="TVC:JP10Y">Japan 10-Year JGB</option>
+              <option value="TVC:AU10Y">Australia 10-Year</option>
             </optgroup>
-            <optgroup label="Commodities">
+            <optgroup label="Commodities &amp; energy">
               <option value="TVC:UKOIL">Brent Crude</option>
               <option value="TVC:USOIL">WTI Crude</option>
+              <option value="TVC:NATURALGAS">Natural Gas</option>
               <option value="TVC:GOLD">Gold</option>
               <option value="TVC:SILVER">Silver</option>
-              <option value="TVC:NATURALGAS">Natural Gas</option>
-              <option value="COMEX:HG1!">Copper</option>
+              <option value="TVC:PLATINUM">Platinum</option>
+              <option value="CAPITALCOM:COPPER">Copper</option>
+              <option value="CBOT:ZW1!">Wheat</option>
+              <option value="CBOT:ZC1!">Corn</option>
+              <option value="ICE:KC1!">Coffee</option>
+              <option value="ICE:SB1!">Sugar</option>
             </optgroup>
-            <optgroup label="FX">
+            <optgroup label="FX &amp; crypto">
               <option value="FX:GBPUSD">GBP/USD</option>
               <option value="FX:EURUSD">EUR/USD</option>
               <option value="FX:USDJPY">USD/JPY</option>
+              <option value="FX:USDCHF">USD/CHF</option>
+              <option value="FX:AUDUSD">AUD/USD</option>
+              <option value="FX:USDCAD">USD/CAD</option>
+              <option value="OANDA:USDCNH">USD/CNH</option>
+              <option value="FX:USDINR">USD/INR</option>
               <option value="TVC:DXY">DXY Dollar Index</option>
-              <option value="BITSTAMP:BTCUSD">BTC/USD</option>
+              <option value="COINBASE:BTCUSD">Bitcoin</option>
+              <option value="COINBASE:ETHUSD">Ethereum</option>
             </optgroup>
-            <optgroup label="Volatility">
-              <option value="TVC:VIX">VIX</option>
+            <optgroup label="Volatility &amp; stress">
+              <option value="TVC:VIX">VIX (S&amp;P 500 vol)</option>
+              <option value="TVC:VXN">VXN (Nasdaq vol)</option>
+              <option value="TVC:MOVE">MOVE (bond vol)</option>
+            </optgroup>
+            <optgroup label="Macro indicators">
+              <option value="ECONOMICS:USINTR">US Fed Funds Rate</option>
+              <option value="ECONOMICS:GBINTR">UK BoE Bank Rate</option>
+              <option value="ECONOMICS:EUINTR">ECB Deposit Rate</option>
+              <option value="ECONOMICS:USM2">US M2 Money Supply</option>
+              <option value="ECONOMICS:USIRYY">US CPI YoY</option>
+              <option value="ECONOMICS:GBIRYY">UK CPI YoY</option>
+              <option value="ECONOMICS:USURATE">US Unemployment</option>
+              <option value="ECONOMICS:GBURATE">UK Unemployment</option>
+              <option value="ECONOMICS:USGDPYY">US GDP YoY</option>
+              <option value="ECONOMICS:GBGDPYY">UK GDP YoY</option>
             </optgroup>
           </select>
           <div class="hero-quote" id="hero-quote">
@@ -133,7 +232,7 @@
     <!-- RIGHT SIDEBAR -->
     <aside class="side-panel">
       <!-- NEWS FEED -->
-      <section class="sub-panel" data-panel="news">
+      <section class="sub-panel" id="sub-news" data-panel="news">
         <header class="sub-head">
           <h3>LIVE NEWSWIRE</h3>
           <span class="sub-count" id="news-count">—</span>
@@ -147,7 +246,7 @@
       </section>
 
       <!-- EVENTS -->
-      <section class="sub-panel" data-panel="events">
+      <section class="sub-panel" id="sub-events" data-panel="events">
         <header class="sub-head">
           <h3>EVENT TIMELINE</h3>
           <div class="sub-actions">
@@ -195,6 +294,8 @@
       <!-- Category panels injected by JS -->
     </div>
   </section>
+    </div><!-- /content-col -->
+  </div><!-- /app-shell -->
 
   <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ FOOTER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
   <footer class="footer">
@@ -275,9 +376,9 @@
   <!-- Boot screen -->
   <div class="boot" id="boot-screen">
     <img src="assets/img/logo.png" alt="" class="boot-logo" />
-    <div class="boot-name">MACRO<span class="boot-slash">//</span>OPS</div>
+    <div class="boot-name">Naadir's <span class="boot-accent">Macro Economic Ops</span> Dashboard</div>
     <div class="boot-lines">
-      <div class="boot-line">› INITIALIZING MACRO//OPS</div>
+      <div class="boot-line">› INITIALIZING DASHBOARD</div>
       <div class="boot-line">› ESTABLISHING SECURE CHANNEL</div>
       <div class="boot-line">› LOADING TIME SERIES &amp; WIRE FEED…</div>
     </div>

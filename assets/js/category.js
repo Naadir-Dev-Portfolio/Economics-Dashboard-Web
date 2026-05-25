@@ -38,6 +38,7 @@
       const frag = tpl.content.cloneNode(true);
       const panel = frag.querySelector('.cat-panel');
       panel.dataset.sectionKey = key;
+      panel.id = `cat-${key}`;
       panel.querySelector('.cat-glyph').textContent = ICON_MAP[meta.icon] || '◆';
       panel.querySelector('.cat-title').textContent = meta.title;
       panel.querySelector('.cat-blurb').textContent = meta.blurb;

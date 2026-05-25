@@ -9,14 +9,18 @@
 
   // [sectionKey, seriesId, label, optional TradingView symbol, region badge]
   const KPI_DEFS = [
-    ['rates',       'fed_funds',     'FED RATE',    'TVC:US10Y',    'US'],
-    ['rates',       'boe_rate',      'BOE RATE',    'TVC:GB10Y',    'UK'],
-    ['rates',       'ecb_rate',      'ECB RATE',    'TVC:DE10Y',    'EU'],
-    ['commodities', 'oil_brent',     'BRENT',       'TVC:UKOIL',    'GLOBAL'],
-    ['commodities', 'oil_wti',       'WTI',         'TVC:USOIL',    'US'],
-    ['commodities', 'uk_petrol',     'UK PETROL',   null,           'UK'],
-    ['commodities', 'uk_diesel',     'UK DIESEL',   null,           'UK'],
-    ['commodities', 'gold',          'GOLD',        'TVC:GOLD',     'GLOBAL'],
+    ['rates',       'fed_funds',     'FED RATE',      'ECONOMICS:USINTR',  'US'],
+    ['rates',       'boe_rate',      'BOE RATE',      'ECONOMICS:GBINTR',  'UK'],
+    ['rates',       'ecb_rate',      'ECB RATE',      'ECONOMICS:EUINTR',  'EU'],
+    ['money',       'us_m2',         'US M2',         'ECONOMICS:USM2',    'US'],
+    ['inflation',   'us_cpi_yoy',    'US CPI',        'ECONOMICS:USIRYY',  'US'],
+    ['inflation',   'uk_cpi_yoy',    'UK CPI',        'ECONOMICS:GBIRYY',  'UK'],
+    ['commodities', 'oil_brent',     'BRENT',         'TVC:UKOIL',         'GLOBAL'],
+    ['commodities', 'oil_wti',       'WTI',           'TVC:USOIL',         'US'],
+    ['commodities', 'uk_petrol',     'UK PETROL',     null,                'UK'],
+    ['commodities', 'uk_diesel',     'UK DIESEL',     null,                'UK'],
+    ['commodities', 'gold',          'GOLD',          'TVC:GOLD',          'GLOBAL'],
+    ['risk',        'vix',           'VIX',           'TVC:VIX',           'US'],
   ];
 
   function init(sectionData) {

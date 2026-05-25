@@ -23,7 +23,7 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +99,78 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
             continue
         out.append([_to_ms(o["date"]), val])
     return out
+
+
+_UK_HPI_CACHE: dict[str, list[list]] = {}
+
+def fetch_uk_hpi_region(region_name: str) -> list[list]:
+    """Fetch monthly UK HPI average prices for one region from Land Registry.
+
+    The full UK HPI CSV (~35MB) is downloaded once per run and cached in
+    ``_UK_HPI_CACHE`` keyed by region name. Recent ~6 months of URLs are
+    probed to find the freshest published file.
+    """
+    if region_name in _UK_HPI_CACHE:
+        return _UK_HPI_CACHE[region_name]
+    if "_loaded" in _UK_HPI_CACHE:
+        return _UK_HPI_CACHE.get(region_name, [])
+
+    import csv as _csv
+    import io as _io
+    from datetime import date as _date
+
+    today = _date.today()
+    csv_text = None
+    used_url = None
+    for back in range(6):
+        m = today.month - back
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        url = f"https://publicdata.landregistry.gov.uk/market-trend-data/house-price-index-data/UK-HPI-full-file-{y}-{m:02d}.csv"
+        try:
+            r = requests.get(url, timeout=120, stream=False,
+                             headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
+            if r.status_code == 200 and len(r.content) > 1_000_000:
+                csv_text = r.content.decode("utf-8", errors="replace")
+                used_url = url
+                break
+        except requests.RequestException:
+            continue
+
+    if not csv_text:
+        log.warning("UK HPI: no published CSV found in last 6 months")
+        _UK_HPI_CACHE["_loaded"] = []
+        return []
+
+    log.info("UK HPI: loaded %s (%.1f MB)", used_url, len(csv_text) / 1e6)
+
+    reader = _csv.DictReader(_io.StringIO(csv_text))
+    by_region: dict[str, list[list]] = {}
+    for row in reader:
+        rname = row.get("RegionName", "").strip()
+        if not rname:
+            continue
+        price = row.get("AveragePrice", "").strip()
+        date_str = row.get("Date", "").strip()
+        if not price or not date_str:
+            continue
+        try:
+            d, m_, y_ = date_str.split("/")
+            iso = f"{y_}-{m_.zfill(2)}-{d.zfill(2)}"
+            ts = _to_ms(iso)
+            v = float(price)
+        except (ValueError, KeyError):
+            continue
+        by_region.setdefault(rname, []).append([ts, v])
+
+    for k, v in by_region.items():
+        v.sort(key=lambda r: r[0])
+        _UK_HPI_CACHE[k] = v
+    _UK_HPI_CACHE["_loaded"] = []  # marker
+    log.info("UK HPI: parsed %d regions", len(by_region))
+    return _UK_HPI_CACHE.get(region_name, [])
 
 
 _UK_FUEL_CACHE: dict[str, list[list]] = {}
@@ -245,6 +317,13 @@ def apply_transform(data: list[list], transform: str) -> list[list]:
     return data
 
 
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+def _date_str(ms: int) -> str:
+    """ms epoch → YYYY-MM-DD (safe for pre-1970 dates on Windows)."""
+    return (_EPOCH + timedelta(milliseconds=ms)).strftime("%Y-%m-%d")
+
+
 def compute_stats(data: list[list]) -> dict[str, Any]:
     """Latest value plus 1m / 1y / 5y / max changes."""
     if not data:
@@ -252,7 +331,7 @@ def compute_stats(data: list[list]) -> dict[str, Any]:
     latest_ts, latest_val = data[-1]
     stats: dict[str, Any] = {
         "last_value": round(latest_val, 4),
-        "last_date": datetime.fromtimestamp(latest_ts / 1000, tz=timezone.utc).strftime("%Y-%m-%d"),
+        "last_date": _date_str(latest_ts),
         "n_points": len(data),
     }
 
@@ -276,12 +355,8 @@ def compute_stats(data: list[list]) -> dict[str, Any]:
     vals = [d[1] for d in data]
     stats["min"] = round(min(vals), 4)
     stats["max"] = round(max(vals), 4)
-    stats["min_date"] = datetime.fromtimestamp(
-        data[vals.index(min(vals))][0] / 1000, tz=timezone.utc
-    ).strftime("%Y-%m-%d")
-    stats["max_date"] = datetime.fromtimestamp(
-        data[vals.index(max(vals))][0] / 1000, tz=timezone.utc
-    ).strftime("%Y-%m-%d")
+    stats["min_date"] = _date_str(data[vals.index(min(vals))][0])
+    stats["max_date"] = _date_str(data[vals.index(max(vals))][0])
     return stats
 
 
@@ -311,6 +386,12 @@ def fetch_one(s: dict) -> dict | None:
         data = fetch_uk_fuel(s["uk_fuel"])
         if data:
             source = "gov.uk DESNZ weekly road fuel prices"
+
+    if (not data) and s.get("uk_hpi"):
+        log.info("  → %s via UK HPI (%s)", sid, s["uk_hpi"])
+        data = fetch_uk_hpi_region(s["uk_hpi"])
+        if data:
+            source = "HM Land Registry UK House Price Index"
 
     if not data:
         log.error("  ✗ no data for %s", sid)

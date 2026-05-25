@@ -46,9 +46,67 @@
 
     initModules();
     wireTopbar();
+    wireSidebar();
     renderReport();
     renderFooterUpdate();
     hideBootScreen();
+  }
+
+  function wireSidebar() {
+    const shell = document.querySelector('.app-shell');
+    const isMobile = () => window.matchMedia('(max-width: 980px)').matches;
+
+    // Apply persisted state
+    try {
+      const collapsed = localStorage.getItem('navCollapsed') === '1';
+      if (collapsed && !isMobile()) shell.classList.add('nav-collapsed');
+    } catch (_) {}
+
+    const toggle = () => {
+      if (isMobile()) {
+        shell.classList.toggle('nav-mobile-open');
+      } else {
+        shell.classList.toggle('nav-collapsed');
+        try { localStorage.setItem('navCollapsed', shell.classList.contains('nav-collapsed') ? '1' : '0'); } catch (_) {}
+      }
+    };
+    $('#sidebar-toggle')?.addEventListener('click', toggle);
+    $('#nav-collapse')?.addEventListener('click', toggle);
+
+    // Nav-item click → scroll to target + expand the section if it's a cat-panel
+    $$('.nav-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = item.dataset.target;
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (id.startsWith('cat-')) {
+          el.classList.remove('is-collapsed');
+          // resize chart on next paint
+          setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (isMobile()) shell.classList.remove('nav-mobile-open');
+      });
+    });
+
+    // Scroll-spy: highlight active nav-item
+    const targets = $$('.nav-item').map(i => i.dataset.target).filter(Boolean);
+    const els = targets.map(id => document.getElementById(id)).filter(Boolean);
+    if ('IntersectionObserver' in window && els.length) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(e => {
+            if (e.isIntersecting) {
+              const id = e.target.id;
+              $$('.nav-item').forEach(i => i.classList.toggle('is-active', i.dataset.target === id));
+            }
+          });
+        },
+        { rootMargin: '-30% 0% -55% 0%', threshold: 0 }
+      );
+      els.forEach(el => observer.observe(el));
+    }
   }
 
   function initModules() {
