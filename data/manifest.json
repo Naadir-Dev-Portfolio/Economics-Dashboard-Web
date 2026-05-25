@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-24T21:26:12+00:00",
-  "duration_sec": 12.7,
+  "generated_at": "2026-05-25T08:07:43+00:00",
+  "duration_sec": 15.1,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -52,8 +52,8 @@
       "icon": "home",
       "blurb": "Residential property \u2014 the household balance-sheet anchor.",
       "file": "data/housing.json",
-      "series_count": 13,
-      "ok": 0,
+      "series_count": 27,
+      "ok": 14,
       "fail": 13
     },
     "commodities": {
@@ -103,7 +103,7 @@
     }
   },
   "totals": {
-    "ok": 44,
+    "ok": 58,
     "fail": 93
   }
 }
