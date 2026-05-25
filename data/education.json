@@ -1,0 +1,250 @@
+{
+  "meta": {"generated_at": "2026-05-25", "version": 1},
+  "categories": [
+    {
+      "id": "fundamentals",
+      "title": "Fundamentals",
+      "glyph": "◎",
+      "blurb": "The big-picture mental model.",
+      "topics": [
+        {
+          "id": "what-is-macro",
+          "title": "What is macroeconomics?",
+          "tldr": "Macro is the study of the whole economy at once — growth, jobs, prices, money flows — not individual firms or households.",
+          "body_md": "Macroeconomics studies the aggregate behaviour of an economy. Where microeconomics asks why your local pub set its beer price at £6, macro asks why prices across the whole country rose 3% last year.\n\nThe four numbers you should track for any country:\n\n- **GDP growth** — is the economy expanding or shrinking?\n- **Inflation** — how fast are prices rising?\n- **Unemployment** — what share of people who want work can't find it?\n- **The policy rate** — the price of money set by the central bank\n\nEverything else on this dashboard — bond yields, currency moves, house prices, oil — flows from those four. If you can hold roughly the right numbers in your head for the US, UK and Eurozone, you've already got a better mental model than most people on financial Twitter.\n\n## Why does this matter to you?\n\nMacroeconomic conditions decide your mortgage rate, your fuel bill, the value of your pension, whether you get a pay rise, and whether your employer is hiring or firing. It is the single most consequential subject most people never study.\n\n## How to read this dashboard\n\nStart with the SitRep at the top — one line that summarises the regime. Then check the KPI strip for the headline rates and prices. The hero chart is where you go deep on one ticker. Everything else expands as you scroll.",
+          "related": ["business-cycle", "leading-lagging"]
+        },
+        {
+          "id": "business-cycle",
+          "title": "The business cycle",
+          "tldr": "Economies expand, peak, contract, trough, and expand again. The whole cycle typically takes 6-10 years.",
+          "body_md": "The post-WWII business cycle has four phases:\n\n1. **Expansion** — growth above trend, unemployment falling, inflation eventually rising\n2. **Peak** — growth tops out, inflation pressure builds, central banks tighten\n3. **Contraction (recession)** — GDP shrinks, unemployment rises, central banks cut rates\n4. **Trough** — the bottom, before recovery begins\n\nUS expansions since 1945 have averaged about **65 months**. Recessions average **10 months**. The 2009-2020 expansion was the longest on record at 128 months. The COVID recession of 2020 was the shortest — just two months.\n\n## What kicks off recessions?\n\nRarely one thing. The 'classic' modern recession has three ingredients:\n\n- **Over-tightening by the central bank** (rates too high for too long)\n- **A credit or asset bubble bursting** (2008 housing, 2000 tech, 1989 Japan)\n- **An external shock** (oil 1973, COVID 2020, Russia 2022)\n\nThe yield curve tends to invert ~12-18 months before recession arrives. Unemployment lags — it usually keeps falling until the recession is well underway.\n\n## Where are we now?\n\nCheck the **macro section** for GDP growth and the **risk section** for yield curve and credit spreads. The combination tells you which phase you're likely in.",
+          "related": ["yield-curve", "curve-inversion-recession"]
+        },
+        {
+          "id": "leading-lagging",
+          "title": "Leading, coincident & lagging indicators",
+          "tldr": "Some indicators (yield curve, building permits, stock market) tell you about the future. Others (GDP) tell you about the present. Unemployment tells you about the past.",
+          "body_md": "Economists categorise indicators by their timing:\n\n## Leading (turn before the economy)\n- **Yield curve slope** — inverts 12-18 months before recessions\n- **Building permits** — housing leads the cycle\n- **Stock market** — falls roughly 6 months before recession\n- **ISM/PMI manufacturing** — turns first\n- **Initial jobless claims** — weekly, very current\n- **Credit spreads** — widen as conditions tighten\n- **Consumer expectations** (UMich expectations index)\n\n## Coincident (move with the economy)\n- **GDP growth** — quarterly, the best summary\n- **Industrial production**\n- **Retail sales**\n- **Personal income**\n\n## Lagging (turn after the economy)\n- **Unemployment rate** — peaks several months after recession ends\n- **CPI** — inflation rolls over slowly\n- **Interest rates** — central banks tend to cut after the damage is already done\n\n## Practical takeaway\n\nDon't wait for GDP to turn negative — by then you're already in recession. Watch the **leading** group. The Conference Board's Leading Economic Index (USSLIND in this dashboard) bundles ten leading indicators into one number; six consecutive monthly declines has called nine of the last nine recessions.",
+          "related": ["yield-curve", "what-is-macro"]
+        },
+        {
+          "id": "nominal-vs-real",
+          "title": "Nominal vs real (and why inflation-adjustment matters)",
+          "tldr": "Nominal numbers are what you see. Real numbers strip out inflation. Always check which one you're looking at.",
+          "body_md": "If your salary rose 5% last year but inflation was 7%, you got **poorer in real terms**. That's the entire idea.\n\n## In formulas\n\n- **Real return** = (1 + nominal return) ÷ (1 + inflation) − 1\n- For small numbers: Real ≈ Nominal − Inflation\n\nA Treasury yielding 4.5% with CPI at 3.0% offers a **real yield** of about 1.5%. The same Treasury yielding 4.5% with CPI at 6.0% has a **negative real yield** of −1.5%; you're being paid in steadily worse pounds or dollars.\n\n## Where to find real numbers on this dashboard\n\n- **TIPS yield** — US 10-year real yield (the market's own number, no need to subtract anything)\n- **PCE / CPI YoY** — to compute real wages, real GDP, etc.\n- **Case-Shiller HPI** — published nominal, deflate by CPI for real house prices\n\n## Why it matters for investors\n\nA pension pot growing 4% per year sounds fine. With 4% inflation, you're treading water. The 2022-2023 bond crash was a real-return wipe-out: nominal Treasuries fell while CPI was running near 9%, so real wealth shrank ~25% in 24 months for long-duration holders. The S&P 500's real return from January 1966 to August 1982 was approximately **zero** despite repeated nominal new highs.",
+          "related": ["tips-real-yields", "cpi-vs-pce"]
+        }
+      ]
+    },
+    {
+      "id": "rates",
+      "title": "Interest Rates & Central Banks",
+      "glyph": "◭",
+      "blurb": "How central banks set the price of money.",
+      "topics": [
+        {
+          "id": "what-is-a-policy-rate",
+          "title": "What is a policy rate?",
+          "tldr": "The interest rate the central bank charges commercial banks for overnight borrowing. Everything else — mortgages, gilts, savings rates — anchors off this.",
+          "body_md": "The three you should know:\n\n- **US Federal Funds Rate** — set by the FOMC, currently target range\n- **UK Bank Rate** — set by the Bank of England's MPC\n- **ECB Deposit Facility Rate** — set by the ECB Governing Council\n\nWhen the central bank changes the policy rate, banks adjust the rates they offer on loans and deposits within days. Mortgage trackers move immediately; fixed mortgages re-price as old ones roll off. Bond yields move within seconds.\n\n## Why does the rate exist?\n\nThe central bank uses it to **manage inflation and employment**. Rate up → borrowing more expensive → spending and investment cool → inflation falls (eventually). Rate down → the reverse.\n\n## Typical ranges (history)\n\n- US Fed Funds: low of 0.00% (2008-15, 2020-22), high of 19.10% (1981 under Volcker)\n- UK Bank Rate: low of 0.10% (2020), high of 17% (1979), 5.50% (2023-24)\n- ECB Deposit Rate: low of −0.50% (2019-22), high of 4.00% (2023)\n\nThe 2022-2024 tightening cycle was the **fastest in 40 years** across all three central banks — 525bps from the Fed in 18 months. The 2025-2026 cuts have been comparatively gentle.\n\n## The transmission lag\n\nA rate change today fully shows up in inflation in **12-18 months**. This is why central banks raise rates *before* inflation peaks, and cut *before* growth craters. The lag is also why over-tightening is a constant risk — the data they react to is already months old.",
+          "related": ["how-fed-decides", "how-boe-decides", "transmission"]
+        },
+        {
+          "id": "how-fed-decides",
+          "title": "How the Fed sets rates (FOMC)",
+          "tldr": "12 voters meet 8 times a year. They have a dual mandate: full employment + 2% inflation.",
+          "body_md": "The Federal Open Market Committee (FOMC) meets eight times a year. Voters are the 7 governors plus 5 of the 12 regional Fed presidents on a rotating basis (NY Fed always votes; others rotate).\n\n## The deliverables\n\nAt 2:00 PM ET on decision day:\n\n1. **Statement** — terse paragraph explaining what they did and why\n2. **Dot plot** (March/June/Sept/Dec only) — each member's forecast for the rate path\n3. **Summary of Economic Projections** — GDP, unemployment, inflation forecasts\n\nAt 2:30 PM ET: **Chair's press conference**. This is what actually moves markets — they parse every adjective.\n\n## The mandate\n\nThe Fed has a **dual mandate** (set by Congress in 1977):\n\n- **Maximum employment** (currently equated to ~4% unemployment, but not a fixed number)\n- **Price stability** (interpreted as 2% PCE inflation, formally adopted 2012)\n\nThis differs from the BoE and ECB, which have inflation-only mandates. In practice all three watch growth too.\n\n## What to watch on decision day\n\n- **Statement diff** — what wording changed from last meeting?\n- **Dot plot shift** — did the median dot move up or down vs last quarter?\n- **Powell's tone** — hawkish (more hikes), dovish (more cuts), or balanced?\n- **Press conference questions** — particularly the first three\n\nThe **next FOMC meeting countdown** is in the KPI strip — top-left card.",
+          "related": ["what-is-a-policy-rate", "how-boe-decides"]
+        },
+        {
+          "id": "how-boe-decides",
+          "title": "How the Bank of England sets rates",
+          "tldr": "9 MPC members vote independently. The mandate is a 2% CPI target, set by HM Treasury.",
+          "body_md": "The Bank of England's Monetary Policy Committee (MPC) meets 8 times a year, typically on the first Thursday of February, March, May, June, August, September, November and December.\n\n## Members\n\n- **Governor** (currently Andrew Bailey)\n- 3 **Deputy Governors** (Monetary Policy, Financial Stability, Markets & Banking)\n- 1 **Chief Economist**\n- 4 **External members** appointed by the Chancellor\n\nEach member votes independently. The vote split is published — a 5-4 split is more uncertain than 9-0.\n\n## The mandate\n\nUnlike the Fed, the BoE has a **single mandate**: 2% CPI inflation. If inflation drifts more than 1 percentage point from target, the Governor must write an open letter to the Chancellor explaining why.\n\n## Decision-day timeline\n\n- **12:00 BST** — Bank Rate decision + vote split + statement\n- **12:00 BST** — On Monetary Policy Report meetings (Feb/May/Aug/Nov): full forecast document published\n- **12:30 BST** — Press conference (MPR meetings only)\n\n## What to watch\n\n- **Vote count** — 9-0 cuts signal strong consensus to ease; 5-4 holds suggest a cut is coming next time\n- **The Bank's own inflation forecast** — does it see CPI back at 2% in 2 years?\n- **Bailey's tone in the presser** — UK markets are smaller and gilt yields move more on tone than on the vote itself\n\nThe **next MPC countdown** is in the BOE RATE card.",
+          "related": ["what-is-a-policy-rate", "how-fed-decides"]
+        },
+        {
+          "id": "qe-qt",
+          "title": "Quantitative easing and tightening",
+          "tldr": "When rates hit zero, central banks buy bonds with new money (QE). To unwind, they let the bonds mature without reinvesting (QT).",
+          "body_md": "Conventional monetary policy works by adjusting the overnight rate. Quantitative easing (QE) is what central banks do **when the rate is already at zero** and they want to ease further.\n\n## How QE works\n\n1. The central bank creates new bank reserves out of thin air\n2. Uses them to buy long-dated government bonds (and sometimes corporate bonds, MBS)\n3. Bond prices rise → yields fall → mortgage and corporate borrowing costs fall\n4. Asset prices rise more broadly (stocks, property)\n\nThe Fed's balance sheet went from $0.9 trillion in 2008 to $4.5 trillion by 2015 (QE1-3). It hit $8.9 trillion in 2022 after the COVID QE round.\n\n## QT — quantitative tightening\n\nThe reverse: the central bank *stops reinvesting* maturing bonds. Reserves shrink. Long-dated yields drift up. The Fed has run QT twice — 2017-2019 (caused the September 2019 repo crisis) and 2022-present.\n\nThe BoE has gone further — actively *selling* gilts back to the market, not just letting them roll off.\n\n## How to read it on this dashboard\n\nThe **Money & Liquidity** section has Fed balance sheet (`WALCL`) and US M2 charts. M2 contracted briefly in 2022-23 for the first time since the 1930s — that was the QT cycle working.\n\n## Why it's controversial\n\n- QE compresses risk premia → inflates asset prices → widens inequality (the wealthy own the assets)\n- It blurs the line between monetary and fiscal policy (the central bank effectively monetises government debt)\n- The full long-run cost of QE is still unclear",
+          "related": ["central-bank-balance-sheet", "what-is-money-supply"]
+        },
+        {
+          "id": "real-rate",
+          "title": "Real interest rates",
+          "tldr": "Nominal rate minus inflation. When real rates are positive, savers win and borrowers pay; when negative, the opposite.",
+          "body_md": "The real interest rate is the nominal rate adjusted for inflation:\n\n`real rate ≈ nominal rate − expected inflation`\n\nFisher's exact equation: `(1 + real) = (1 + nominal) ÷ (1 + inflation)`\n\n## Why it matters more than the headline rate\n\nA 10% policy rate sounds high — unless inflation is 12%, in which case it's *easy money* in real terms (negative real rate of −2%). A 2% policy rate sounds low — unless inflation is at 0%, in which case real rates are +2% and conditions are tight.\n\n## Where to find real rates\n\n- **10-Year TIPS yield** (US Treasury Inflation-Protected Securities) — the cleanest market read\n- The dashboard has `US 10-Year Real` in the Bonds section (FRED series DFII10)\n- For other countries, subtract CPI YoY from the nominal yield\n\n## Historical context\n\n- 1970s: deeply negative real rates → inflation surge\n- Volcker era (1981): real Fed Funds peaked above 8% → inflation crushed\n- 2009-2021: negative real rates almost continuously → asset price boom\n- 2023-2024: 10y TIPS pushed above +2% for the first time since 2008 → bond rout, housing market freeze\n\nWhen the **10y real yield** crosses +2%, expect housing weakness, equity multiple compression, and pressure on long-duration tech.",
+          "related": ["nominal-vs-real", "tips-real-yields"]
+        }
+      ]
+    },
+    {
+      "id": "bonds",
+      "title": "Bonds & Yields",
+      "glyph": "~",
+      "blurb": "Government debt and the curve.",
+      "topics": [
+        {
+          "id": "what-is-a-bond",
+          "title": "What is a bond?",
+          "tldr": "An IOU. The issuer borrows money today and promises to pay regular interest (coupons) plus the principal back at a fixed date.",
+          "body_md": "A bond has four key features:\n\n- **Issuer** — who's borrowing (a government, a company, a city)\n- **Principal / face value** — the amount borrowed (typically £100 or $1,000 per bond)\n- **Coupon** — the fixed interest payment, usually as a percentage of face value\n- **Maturity** — when the principal is repaid\n\nExample: A UK 10-year gilt with a 4% coupon issued at £100 pays the holder £4 per year for 10 years and returns £100 at the end.\n\n## Why bonds aren't safe in the way most people think\n\nBonds carry three risks:\n\n1. **Credit risk** — the issuer might not pay (low for the UK, US, Germany; higher for corporates and emerging markets)\n2. **Inflation risk** — your £100 back in 10 years buys less\n3. **Interest rate risk** — if rates rise, the *market price* of your bond falls before maturity\n\nThe 2022 bond crash hammered holders of long-dated Treasuries: the iShares 20+Y Treasury ETF (TLT) fell **−45%** peak to trough as the Fed hiked.\n\n## Government bonds you'll see on this dashboard\n\n- **US Treasuries** — the global risk-free benchmark\n- **UK gilts** — UK government debt (named for the gilt-edged certificates of old)\n- **Bunds** — German government debt; the Eurozone benchmark\n- **JGBs** — Japanese government bonds\n- **OATs** — French government bonds\n- **BTPs** — Italian government bonds (higher yield = perceived sovereign risk)",
+          "related": ["price-yield-inverse", "yield-curve"]
+        },
+        {
+          "id": "price-yield-inverse",
+          "title": "Price–yield inverse relationship",
+          "tldr": "When bond prices rise, yields fall. When prices fall, yields rise. Always.",
+          "body_md": "A bond's yield is the return you'd earn if you bought it today and held to maturity. Because the coupon is fixed at issue, the only way the yield can change is for the **price** to move.\n\n## Worked example\n\nA bond pays £4/year forever (or for a long time) and trades at par (£100). Yield = 4 ÷ 100 = **4%**.\n\nRates in the wider market suddenly fall and the bond's price rises to £125. Yield = 4 ÷ 125 = **3.2%**.\n\nOr rates rise and the bond price falls to £80. Yield = 4 ÷ 80 = **5%**.\n\n## Why it matters\n\n- When you see \"US 10-Year yield rose to 4.5%\", the market price of those bonds **fell**.\n- Higher yields hurt existing bond holders (mark-to-market loss) but reward new buyers.\n- Falling yields are *good* if you already own bonds, *bad* if you want to buy income.\n\n## Duration\n\nThe sensitivity of a bond's price to yield changes is called **duration**. A 10-year bond has a duration of roughly 8 years; a 1% rise in yields causes an 8% price drop. A 30-year bond's duration is closer to 20, so a 1% yield rise = 20% price drop. This is why long-dated bonds got hammered in 2022.",
+          "related": ["what-is-a-bond", "term-premium"]
+        },
+        {
+          "id": "yield-curve",
+          "title": "The yield curve",
+          "tldr": "Plot of yields by maturity. Normally upward-sloping. When it inverts, recession often follows.",
+          "body_md": "The yield curve shows the yield on government bonds of different maturities — 3-month T-bill, 2-year, 5-year, 10-year, 30-year.\n\n## Three shapes\n\n1. **Normal** — long yields > short yields. Investors demand more for tying up money longer. This is the resting state.\n2. **Flat** — long and short yields roughly equal. The market expects no big change in rates.\n3. **Inverted** — short yields > long yields. The market expects the central bank to cut rates aggressively (typically because of an oncoming recession).\n\n## Why inversion signals recession\n\nIf the 2-year yields more than the 10-year, the market is effectively saying \"rates will be much lower 2-5 years from now\". The only reason that happens is if the central bank is expected to cut hard — which it only does when the economy is in trouble.\n\n## Track record\n\nThe US 10Y-2Y curve has inverted before **every recession since 1955** with only one false positive. Lead time: 6-24 months from inversion to recession start.\n\nThe more recent 10Y-3M version (favoured by NY Fed researcher Arturo Estrella) has a similar record and is the Fed's preferred gauge.\n\n## Where to look\n\nThe **Bonds** section has `curve_10y2y` and `curve_10y3m`. Negative numbers = inverted. The 2022-2024 inversion was the deepest since 1981 and lasted ~26 months. It un-inverted in late 2024.",
+          "related": ["curve-inversion-recession", "what-is-a-bond"]
+        },
+        {
+          "id": "curve-inversion-recession",
+          "title": "Yield curve inversion as recession signal",
+          "tldr": "10Y-2Y below zero for 3+ months → recession within 6-24 months. 8 for 8 since 1970.",
+          "body_md": "## The historical record (US 10Y-2Y, FRED series T10Y2Y)\n\n| Inversion start | Recession start | Lead time |\n|---|---|---|\n| Aug 1978 | Jan 1980 | 17 months |\n| Sep 1980 | Jul 1981 | 10 months |\n| Dec 1988 | Jul 1990 | 19 months |\n| Feb 2000 | Mar 2001 | 13 months |\n| Dec 2005 | Dec 2007 | 24 months |\n| Aug 2019 | Feb 2020 | 6 months (COVID) |\n| Mar 2022 | Q? 2024-25 | Debated — softer outcome than past cycles |\n\nLead time averages ~14 months. The shortest was COVID (and arguably exogenous).\n\n## What to watch beyond the basic signal\n\nA brief intraday flip into negative territory isn't enough. The signal is most reliable when:\n\n- Inversion is **sustained for ≥3 months**\n- The depth is **more than −50bps**\n- It's followed by **un-inversion via steepening** (the curve steepens *back* through zero as the short end rallies — that's usually the moment markets price the recession in)\n\nThe 2022-24 cycle un-inverted in late 2024. That step often coincides with the start of rate cuts.\n\n## False positives\n\n- 1965-67 mini-inversion: no recession (slowdown only)\n- The 1998 LTCM-era flat-curve scare: no recession until 2001\n\n## What the curve is *not*\n\nIt is not a *cause* of recession. It is a *signal* that markets already see one coming. By the time the curve inverts, the policy mistake (if there is one) has usually already been made.",
+          "related": ["yield-curve", "leading-lagging"]
+        },
+        {
+          "id": "tips-real-yields",
+          "title": "TIPS and real yields",
+          "tldr": "TIPS pay a real (inflation-adjusted) coupon. Their yield is the market's read on the real interest rate.",
+          "body_md": "Treasury Inflation-Protected Securities (TIPS) are US government bonds whose principal adjusts with CPI. The coupon is paid on the inflation-adjusted principal.\n\n## What the TIPS yield tells you\n\nThe quoted yield on a TIPS is the **real yield** — what you earn over and above inflation. A 10y TIPS yielding 2% means you make a 2% real return regardless of what CPI does.\n\n## Reading it on this dashboard\n\n`us_10y_real` (FRED: DFII10) shows the 10-year TIPS yield. Historical range:\n\n- 2000s: 2-3% positive\n- 2010s: bounced between 0% and +1%\n- 2020-21: deeply negative (−1%) — driven by QE and inflation fears\n- 2023-24: pushed above +2% — first time since 2008\n\n## Breakeven inflation\n\nNominal 10y yield − 10y TIPS yield = **10-year breakeven inflation**. This is what the market expects average inflation to be over the next decade. A useful sanity check:\n\n- Breakeven 1.5% → market thinks the Fed will undershoot the 2% target\n- Breakeven 2.5% → above target, but not panicked\n- Breakeven >3% → inflation expectations un-anchoring\n\n## Why real yields matter for everything\n\n- **Stocks**: when real yields rise, future cash flows discount more harshly → tech and growth stocks suffer first\n- **Gold**: rises when real yields fall (gold has no yield, so it gets more attractive when paper assets pay less in real terms)\n- **Housing**: real mortgage rates determine affordability, not nominal\n\n2022's brutal real-yield surge was the proximate cause of the simultaneous bond, stock, and crypto bear markets.",
+          "related": ["real-rate", "yield-curve"]
+        },
+        {
+          "id": "credit-spreads",
+          "title": "Credit spreads",
+          "tldr": "Extra yield corporate bonds pay over Treasuries. Spreads widen in stress, compress in calm.",
+          "body_md": "A credit spread is the yield difference between a corporate bond and a Treasury of the same maturity. It compensates investors for the risk that the corporate issuer defaults.\n\n## Two tiers\n\n- **Investment Grade (IG)** — BBB or higher. Spreads typically 80-250 bps.\n- **High Yield (HY) / Junk** — BB or below. Spreads typically 300-1000 bps.\n\nThe ICE BofA OAS indices (BAMLC0A0CM for IG, BAMLH0A0HYM2 for HY) are the standard daily series.\n\n## Historical extremes (HY OAS)\n\n- Pre-2008: range ~300-500 bps\n- October 2008: 21.8% — banking system on its knees\n- December 2018: 5.5% — Fed-tightening selloff\n- March 2020 (COVID): 10.9% — credit markets shut\n- Calm periods (2017, late 2021): under 3.5%\n\n## Reading the signal\n\n- **HY OAS > 6%**: stress. Credit conditions tightening. Recession risk elevated.\n- **HY OAS > 8%**: full panic.\n- **IG OAS > 200 bps**: serious concern; usually only seen in/just before recession.\n\nCredit spreads are a **better leading recession signal than equities** because they price actual default probabilities, not just sentiment. Spreads widened ahead of 2008, ahead of COVID, and most recently ahead of the brief 2023 banking stress (SVB).\n\n## Where to look\n\nThe **Risk** section has both `hy_oas` and `ig_oas`. Watch for spreads widening for >2 months on a trend basis — that's when the warning siren is real.",
+          "related": ["yield-curve", "credit-spread-blowouts"]
+        }
+      ]
+    },
+    {
+      "id": "inflation",
+      "title": "Inflation",
+      "glyph": "✦",
+      "blurb": "Why prices rise — and how it's measured.",
+      "topics": [
+        {
+          "id": "cpi-vs-pce",
+          "title": "CPI vs PCE",
+          "tldr": "Two different inflation indices. CPI is what you hear about; PCE is what the Fed actually targets.",
+          "body_md": "The two main US inflation indices use different baskets and methodologies:\n\n## CPI (Consumer Price Index)\n\n- Published by the BLS\n- Based on what *urban consumers* buy\n- Fixed basket — only revised every 2 years\n- Includes a much heavier weight on shelter (~33%) which uses Owner's Equivalent Rent\n- Headline figure most reported by media\n\n## PCE (Personal Consumption Expenditures price index)\n\n- Published by the BEA\n- Based on *what businesses actually sell* — broader coverage including healthcare paid by employers and government\n- Basket updates dynamically — accounts for substitution (if beef gets dear, people buy chicken)\n- Shelter weight ~15% — much lower than CPI\n- **The Fed's official 2% target is on Core PCE**\n\n## Why PCE typically runs ~0.3% below CPI\n\nThe substitution adjustment and lower shelter weight pull PCE down. In 2022, CPI peaked at 9.1% while PCE peaked at 7.0%. The gap was unusually wide that year because shelter was the leading inflation driver.\n\n## What about RPI in the UK?\n\nThe UK has its own ecosystem:\n\n- **CPIH** — CPI including Owner Occupiers' Housing costs (the ONS preferred headline)\n- **CPI** — what the BoE targets (2%)\n- **RPI** — older, methodologically discredited, but still used for some pensions and bonds\n\nRPI typically runs 0.5-1% above CPI.\n\n## Reading the dashboard\n\nThe **Inflation** section shows `us_cpi_yoy`, `us_core_yoy`, `us_pce_yoy`, `us_core_pce`, plus UK/EU/JP equivalents. The Fed watches Core PCE; the BoE watches CPI.",
+          "related": ["headline-vs-core", "real-rate"]
+        },
+        {
+          "id": "headline-vs-core",
+          "title": "Headline vs core inflation",
+          "tldr": "Headline includes food and energy. Core strips them out. Central banks watch core because it's less noisy.",
+          "body_md": "Food and energy prices swing on weather, geopolitics, and OPEC supply decisions — none of which a central bank can influence. So the Fed and most central banks watch **core** inflation (which excludes food and energy) to filter out the noise.\n\n## When the gap matters\n\nIn 2008, headline CPI hit 5.6% while core was 2.5% — the difference was the oil spike. The Fed correctly looked through it and didn't tighten further.\n\nIn 2022, headline peaked at 9.1% and core at 6.6%. Both were high — the inflation was *broad*, not just commodity-driven. That convinced the Fed to hike aggressively.\n\n## The trimmed mean alternative\n\nThe Dallas Fed publishes a **trimmed-mean PCE** that drops the most extreme price moves up *and* down each month. Often a cleaner read than either headline or core.\n\n## Supercore\n\nServices-ex-housing inflation (sometimes called \"supercore\") strips out:\n\n- Food and energy\n- Goods (which can deflate via global trade)\n- Shelter (which lags badly)\n\nThis isolates services prices most closely tied to wages — and is the cleanest read on whether wage growth is fuelling inflation. Powell mentions it frequently.\n\n## Practical rule\n\nIf headline is screaming but core and supercore are calm → don't panic, central bank likely won't react.\n\nIf core is rising even as headline cools → still a problem, real inflation pressure remains.",
+          "related": ["cpi-vs-pce", "wage-price-spiral"]
+        },
+        {
+          "id": "expectations",
+          "title": "Inflation expectations",
+          "tldr": "If everyone expects 5% inflation, wages and prices get set at 5% and it becomes self-fulfilling. Central banks fight hardest to keep expectations anchored.",
+          "body_md": "Anchored expectations are arguably the **single most important central-bank asset**. Once people stop believing inflation will return to target, monetary policy gets a lot harder.\n\n## How they're measured\n\n1. **Market-based** — 5y5y inflation swap rate (5-year forward 5-year breakeven). FRED series T5YIFR. This is what bond markets are pricing.\n2. **Survey-based** — University of Michigan consumer survey, NY Fed survey, Conference Board.\n3. **Professional forecaster** — Philadelphia Fed's SPF.\n\n## Healthy ranges\n\n- 5y5y: **~2-2.5%** is the Fed's comfort zone\n- UMich 5-10y: **2.5-3.5%** typically (consumers always over-estimate)\n- SPF 10y: typically pinned near target (~2-2.3%)\n\n## When they un-anchor\n\nIn 1970s the long-run forecast climbed steadily from 2% to 8%+. Once that happened, the only way back was a deep recession.\n\nMid-2022 saw UMich 5-10y expectations briefly hit 3.1% — the highest since 2008. The Fed reacted very strongly partly because of *this* number; the official line was \"we can't risk un-anchoring\".\n\n## Why it matters\n\nIf workers expect 5% inflation, they ask for 5%+ pay rises. If firms expect 5% inflation in their input costs, they pre-emptively raise prices. Both reinforce the inflation that was originally expected — a self-fulfilling loop.\n\nKeeping expectations anchored is why central banks sometimes *hold* rates restrictive longer than the data alone would suggest.",
+          "related": ["wage-price-spiral", "what-is-a-policy-rate"]
+        }
+      ]
+    },
+    {
+      "id": "money",
+      "title": "Money & Liquidity",
+      "glyph": "$",
+      "blurb": "M2, balance sheets, and the plumbing of finance.",
+      "topics": [
+        {
+          "id": "what-is-money-supply",
+          "title": "M0, M1, M2, M3, M4",
+          "tldr": "Different measures of how much money exists in the economy, from narrow (cash) to broad (everything liquid).",
+          "body_md": "Money is harder to define than you'd think. Economists slice it into 'aggregates' of increasing breadth:\n\n## US definitions\n\n- **M0 (monetary base)** — currency in circulation + bank reserves at the Fed\n- **M1** — currency in public hands + demand deposits + checkable deposits\n- **M2** — M1 + savings deposits + small time deposits + retail money market funds\n- **M3** — discontinued in the US in 2006; was M2 + large time deposits + institutional money funds\n\n## UK definitions\n\n- **M0** — notes and coins in circulation\n- **M4** — the UK's broad money measure (M0 + everything liquid held by UK private sector, excluding banks)\n\nThe BoE publishes M4 monthly. The Fed publishes M2 weekly (the H.6 release).\n\n## Why M2 (US) and M4 (UK) get the most attention\n\nThey strike a balance: broad enough to include normal household savings, narrow enough to exclude flighty institutional money. Most macro analysts use them as the proxy for 'real' money in the economy.\n\n## Trends to know\n\n- **2008-2014**: US M2 grew steadily ~6-7% per year despite QE — banks held the QE money as reserves, didn't lend it out, so M2 didn't explode\n- **2020-2021**: US M2 grew **~27%** in 18 months — the largest spike since WWII. This drove the 2022 inflation\n- **2022-2023**: US M2 *contracted* — first time on record back to 1959 — as QT kicked in\n- **2024-2025**: M2 turned positive again, ~3-4% YoY\n\nWatch `us_m2_yoy` for the trajectory. Sustained M2 growth above ~6% historically correlates with inflation pressure 12-24 months out.",
+          "related": ["m2-and-inflation", "qe-qt"]
+        },
+        {
+          "id": "m2-and-inflation",
+          "title": "M2 growth vs CPI",
+          "tldr": "Big M2 jumps tend to precede inflation by 12-24 months. But the link is messy and isn't a precise lever.",
+          "body_md": "There's a long-running monetarist argument (Milton Friedman, Anna Schwartz, more recently Steve Hanke) that **inflation is always and everywhere a monetary phenomenon** — meaning persistent inflation requires persistent money growth.\n\n## The evidence\n\nThe 1970s inflation came after M2 averaged >10% growth for the late 1960s. The 2022 inflation surge came after the 2020-21 M2 spike of ~27%. In both cases, ordinary monetary models predicted the surge well in advance.\n\nThe 2008-2019 period was a partial counter-example: QE expanded the Fed's balance sheet 4×, yet M2 grew modestly and inflation stayed at or below 2%. The reason: QE created **bank reserves** (not money in the public's hands) and those reserves sat dormant on bank balance sheets earning IOER.\n\nWhat changed in 2020-21: Congress sent **direct fiscal transfers to households** while the Fed was also doing QE. That money went straight into deposit accounts (M2) and got spent into a constrained-supply economy.\n\n## How to use it\n\n- **M2 YoY > 8%** for several quarters → inflation pressure building 12-24 months out\n- **M2 YoY < 0%** → unusual, watch for credit contraction and recession risk\n- **M2 YoY 4-6%** → roughly consistent with 2% inflation + 2% real growth\n\n## The caveats\n\n- Velocity of money (V) also matters: M × V = P × Q. If velocity drops, M can grow without inflation.\n- M2 isn't a precise control lever — central banks no longer 'target' it.\n- Globalisation and demographics complicate the picture: cheap imports kept Western CPI low in 2000-2019 even when money grew fast.",
+          "related": ["what-is-money-supply", "qe-qt"]
+        },
+        {
+          "id": "central-bank-balance-sheet",
+          "title": "Central bank balance sheets",
+          "tldr": "Where QE shows up. Bigger balance sheet = more liquidity in the system.",
+          "body_md": "A central bank's balance sheet has assets (the bonds it owns) and liabilities (the reserves it has created).\n\n## US Fed (FRED series WALCL)\n\n| Year | Balance sheet | Comment |\n|---|---|---|\n| 2007 | $0.9T | Pre-crisis baseline |\n| 2015 | $4.5T | End of QE1-3 |\n| 2019 | $3.8T | After 1st round of QT |\n| 2022 | $8.9T | Peak post-COVID |\n| 2026 (now) | ~$6.5T | Ongoing QT, ~$50-90B/month runoff |\n\n## BoE\n\nThe BoE's APF (Asset Purchase Facility) hit a peak of £895B in 2022. Since then it's been actively *selling* gilts back to the market — the only major central bank doing so. As of mid-2026, ~£650B.\n\n## ECB\n\nThe ECB balance sheet peaked at ~€8.8T in 2022. It's been shrinking via TLTRO repayments and APP runoff. Now ~€6.4T.\n\n## What to read into changes\n\n- **Shrinking balance sheet** = liquidity withdrawal = headwind for risk assets\n- **Pause in QT** = signal that the Fed is worried about plumbing\n- **Restart of QE** = panic mode (March 2020) or operational support (Sept 2019 repo crisis)\n\nNot all balance sheet expansions are equal. The Fed's emergency lending facilities in March 2020 ($300B/week peak) were liquidity provision, *not* QE. They unwound quickly. True QE (bond purchases held to maturity) is what moves M2.",
+          "related": ["qe-qt", "what-is-money-supply"]
+        }
+      ]
+    },
+    {
+      "id": "stress",
+      "title": "Stress & Crash Signals",
+      "glyph": "⚠",
+      "blurb": "The early-warning toolkit.",
+      "topics": [
+        {
+          "id": "yield-curve-inversion-crash",
+          "title": "Yield curve inversion as crash signal",
+          "tldr": "The single best leading indicator we have. 8 out of 8 since 1970. Lead time 6-24 months.",
+          "body_md": "See **Bonds → Curve Inversion** for the full record. Summary:\n\n- 10Y-2Y inverts ≥3 months → recession within 6-24 months\n- Average lead: ~14 months\n- 1 false positive (1965-67, slowdown only) in 60 years\n\n## What it does *not* predict\n\n- Stock market peak: usually 4-12 months *after* inversion starts\n- Recession depth\n- Whether the central bank will respond fast enough\n\n## Watch for un-inversion via steepening\n\nThe curve typically un-inverts as the short end *falls* (the Fed cuts rates) faster than the long end. That moment — bear-steepening through zero — usually coincides with recession arrival and the start of the easing cycle. Mid-2024 hit that pattern.",
+          "related": ["yield-curve", "curve-inversion-recession"]
+        },
+        {
+          "id": "vix-spikes",
+          "title": "VIX spikes",
+          "tldr": "VIX > 35 means panic. VIX > 50 means crisis. VIX < 12 means dangerous complacency.",
+          "body_md": "The VIX is the implied volatility of S&P 500 options over the next 30 days, annualised. It's the market's expected 'normal' range over a month.\n\n## Calibration\n\n| VIX level | Interpretation |\n|---|---|\n| < 12 | Extreme calm — often precedes a vol spike |\n| 12-18 | Normal, healthy markets |\n| 18-25 | Increased uncertainty |\n| 25-35 | Stressed |\n| 35-50 | Panic |\n| > 50 | Crisis |\n\n## Historical extremes\n\n- 1987 Black Monday: VIX ~150 (back-computed)\n- 2008 GFC peak (Oct/Nov): 89.5\n- COVID March 2020: 85.5\n- Aug 2024 yen-carry unwind: 65 (intraday)\n- Long-term mean: ~19\n\n## Inverse correlation with S&P\n\nVIX rises when S&P falls (and vice versa) with very high reliability. The slope of that relationship is roughly −5x — i.e., when S&P falls 5%, VIX rises ~25% on average.\n\n## When to pay attention\n\n- **VIX < 12 for 30+ days** — historically followed by spikes; risk premia too compressed\n- **Sustained VIX > 25** — institutional risk-off is happening, regardless of price action\n- **VIX > 35 with credit spreads also widening** — the real signal of systemic stress\n\nVIX alone isn't enough — confirm with credit spreads and dollar-funding stress measures.",
+          "related": ["credit-spread-blowouts", "yield-curve-inversion-crash"]
+        },
+        {
+          "id": "credit-spread-blowouts",
+          "title": "Credit spread blowouts",
+          "tldr": "High-yield spread above 8% = stress. Above 10% = crisis. Watch the trend, not the level.",
+          "body_md": "See **Bonds → Credit Spreads** for the calibration. The blowout pattern:\n\n1. Spreads compress to a cycle low (often <3.5% on HY)\n2. A trigger event hits (rate scare, growth scare, geopolitical event)\n3. Spreads widen 200-500 bps in days\n4. If the widening sticks, recession risk is elevated\n\n## What makes the signal reliable\n\nCredit market participants are the **first to know** when a company can't make payroll or refinance debt. They price defaults before equity does — equity holders are the last in line.\n\n## Recent episodes\n\n- **Dec 2018**: HY hit 5.5% in 8 weeks → Fed pivoted in Jan 2019 → spreads collapsed\n- **March 2020**: HY hit 10.9% in 3 weeks → Fed announced unlimited QE + corporate-bond purchases → spreads collapsed in 2 weeks\n- **March 2023 (SVB)**: HY widened from 4% to 5.2% → Fed + Treasury rapid response → calm returned\n\nIn every case, spreads led the equity rebound by 2-4 weeks.\n\n## The dashboard\n\n`hy_oas` and `ig_oas` are in the Risk section. Watch for 50+ bps widening over 2 weeks as the trigger to pay full attention.",
+          "related": ["credit-spreads", "vix-spikes"]
+        },
+        {
+          "id": "recession-checklist",
+          "title": "A 10-item recession checklist",
+          "tldr": "Combine multiple signals — no single one is reliable, but a confluence of 5+ is meaningful.",
+          "body_md": "No single indicator predicts recessions perfectly. But when several flash together, take it seriously.\n\n## The checklist\n\n1. **Yield curve inverted** (10Y-2Y < 0 for 3+ months)\n2. **Leading Economic Index** falling for 6+ months\n3. **HY credit spreads** > 6% and widening\n4. **VIX** > 25 sustained\n5. **Building permits** down >10% YoY\n6. **ISM Manufacturing PMI** < 45 for 3+ months\n7. **Initial jobless claims** trending up off lows (>15% above 12-month low)\n8. **Conference Board Consumer Confidence — expectations gap** at extreme levels\n9. **Sahm rule triggered** (3-month avg unemployment rate up 0.5%+ vs trailing 12-month low)\n10. **Credit growth** stalling (commercial bank loans flat or down)\n\n## How to score\n\n- **0-2 firing**: not a recession signal\n- **3-4 firing**: caution, watch closely\n- **5-7 firing**: high probability\n- **8+**: recession is here or imminent\n\nThe Sahm rule (#9) is especially powerful because it triggers in real-time off ordinary employment data — no leading-indicator inference required.\n\n## Why a checklist beats a single oracle\n\nEvery cycle is different. 1990 was an oil shock recession. 2001 was a tech bust. 2008 was a credit bust. 2020 was a pandemic. The single-indicator that worked best each time was different. A combination scoring is more robust.",
+          "related": ["yield-curve-inversion-crash", "credit-spread-blowouts", "leading-lagging"]
+        },
+        {
+          "id": "bubble-warning-signs",
+          "title": "Crash and bubble warning signs",
+          "tldr": "Extreme valuations, retail euphoria, and abundant margin debt — when several align, the unwind tends to be ugly.",
+          "body_md": "Late-cycle equity bubbles have eight common features. The more that fire, the higher the crash risk.\n\n1. **Shiller CAPE above 30** — current S&P CAPE near 35; historically only seen at 1929, 2000, and 2021 peaks\n2. **Margin debt at record highs** (NYSE margin debt / GDP)\n3. **IPO and SPAC frenzy** — companies with no revenue trading at huge multiples\n4. **Meme-stock activity** — retail buying speculative names en masse\n5. **'New paradigm' rhetoric** — \"this time is different\" appearing in serious publications\n6. **Margin lending growing >25% YoY**\n7. **Insider selling at multi-year highs**\n8. **Crypto market cap > $2T** with low-quality token launches\n\n## When the unwind starts\n\nBubbles often **don't crash on bad news** — they crash on *no* news, simply because the marginal buyer is gone. The triggers are usually identifiable in hindsight:\n\n- 1929: Oct 24 'Black Thursday' — no specific catalyst, exhaustion\n- 2000: March peak — collapse of Microsoft antitrust case\n- 2008: Bear Stearns collapse in March, Lehman in September\n- 2022: November 2021 ARK fund top → March 2022 rate hike crystallised it\n\n## How to position\n\nThis is a dashboard, not investment advice. But the analytical point: when 5+ of these features fire **and** you also see late-cycle macro signals (yield curve inverted, credit widening), the risk-reward of new equity exposure is poor.",
+          "related": ["recession-checklist", "vix-spikes"]
+        }
+      ]
+    },
+    {
+      "id": "glossary",
+      "title": "Glossary",
+      "glyph": "📖",
+      "blurb": "Quick definitions of every term used on the dashboard.",
+      "topics": [
+        {
+          "id": "glossary",
+          "title": "Glossary A-Z",
+          "tldr": "Quick definitions of every term used on the dashboard.",
+          "body_md": "**AAA / AA / A / BBB / BB / B / CCC** — Credit ratings from Moody's, S&P, Fitch. BBB and above is Investment Grade; BB and below is High Yield (junk).\n\n**Basis point (bp / bps)** — One-hundredth of a percent. 100 bps = 1.00%. Used because central banks move by 25, 50, 75 bps.\n\n**Bond duration** — Sensitivity of a bond's price to yield changes. A 10y bond ≈ 8 years duration → 1% yield rise causes 8% price drop.\n\n**Breakeven inflation** — Implied future inflation: nominal yield − TIPS yield.\n\n**Bund** — German government bond. Eurozone benchmark.\n\n**Carry trade** — Borrow in low-rate currency, lend in high-rate currency. The yen carry trade was a 2022-24 dominant theme.\n\n**Case-Shiller HPI** — US house price index, 20-city composite. Published monthly with a 2-month lag.\n\n**CDS** — Credit Default Swap. Insurance against a bond issuer defaulting.\n\n**CAPE / Shiller P/E** — Cyclically Adjusted P/E. Uses 10-year average inflation-adjusted earnings.\n\n**CPI / CPIH** — Consumer Price Index. CPIH includes Owner Occupiers' Housing costs; the ONS preferred UK headline.\n\n**Credit spread** — Yield difference between corporate and government bonds of same maturity.\n\n**Curve inversion** — Short yields above long yields. Reliable recession signal.\n\n**Disinflation** — Slowing inflation (still positive, but less). Different from deflation (negative inflation).\n\n**Dot plot** — FOMC quarterly chart: each member's forecast for the policy rate.\n\n**DXY** — US Dollar Index. Weighted basket of USD vs 6 major currencies.\n\n**FFR / Fed Funds Rate** — The Federal Reserve's target overnight interest rate.\n\n**FOMC** — Federal Open Market Committee. Sets US monetary policy. 8 meetings per year.\n\n**FRA-OIS spread** — Forward Rate Agreement vs Overnight Index Swap. Bank-funding stress gauge.\n\n**Gilt** — UK government bond.\n\n**HY OAS** — High Yield Option-Adjusted Spread. Junk-bond credit spread index.\n\n**IG OAS** — Investment Grade Option-Adjusted Spread.\n\n**Inverted curve** — see Curve inversion.\n\n**JGB** — Japanese Government Bond.\n\n**LIBOR** — London Interbank Offered Rate. Phased out 2023; replaced by SOFR (US) and SONIA (UK).\n\n**M0 / M1 / M2 / M4** — Monetary aggregates of increasing breadth.\n\n**MPC** — Monetary Policy Committee. The Bank of England's rate-setting body.\n\n**MOVE Index** — Treasury market volatility index. The 'VIX of bonds'.\n\n**NBER** — National Bureau of Economic Research. Official US recession-dating body.\n\n**NFP** — US Non-Farm Payrolls. The headline monthly employment number.\n\n**OAS** — Option-Adjusted Spread. The most common credit-spread measure.\n\n**PCE** — Personal Consumption Expenditures. The Fed's preferred inflation gauge.\n\n**PMI / ISM** — Purchasing Managers' Index. Survey of factory/services managers. 50 = expansion-contraction line.\n\n**QE / QT** — Quantitative Easing / Tightening. Central bank bond purchases / runoff.\n\n**Real yield** — Nominal yield − expected inflation. Read directly off TIPS.\n\n**Repo rate** — Overnight secured lending rate. Linked to bank reserves and SOFR.\n\n**RPI** — UK Retail Price Index. Older, methodologically discredited, still used for some indexed gilts.\n\n**Sahm Rule** — Recession trigger: 3-month-avg unemployment rate up 0.5%+ vs trailing 12-month low.\n\n**SOFR** — Secured Overnight Financing Rate. Successor to LIBOR.\n\n**Stagflation** — High inflation + low / negative growth.\n\n**Steepening (curve)** — Long yields rising faster than short, or short falling faster than long.\n\n**TIPS** — Treasury Inflation-Protected Securities. Pay a real coupon.\n\n**TED Spread** — Discontinued bank-funding stress measure. Replaced by SOFR-FF and FRA-OIS.\n\n**Velocity of money** — Money supply turnover rate. M × V = P × Q.\n\n**VIX** — S&P 500 implied volatility, 30-day annualised.\n\n**Yield curve** — Plot of government bond yields by maturity.\n\n**Yen carry trade** — see Carry trade.\n\n**Zero Lower Bound (ZLB)** — Policy rate can't go (much) below zero. Forces unconventional tools like QE.",
+          "related": []
+        }
+      ]
+    }
+  ]
+}

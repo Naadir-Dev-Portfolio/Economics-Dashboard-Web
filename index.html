@@ -49,11 +49,32 @@
     </div>
 
     <div class="topbar-right">
-      <div class="clock" id="clock-utc"><span class="clock-label">UTC</span><span class="clock-time">--:--</span></div>
-      <div class="status-pill" id="live-status">
-        <span class="status-dot"></span>
-        <span class="status-label">LIVE</span>
+      <div class="world-clocks" id="world-clocks">
+        <div class="wc wc-primary" data-tz="Europe/London" data-label="LDN">
+          <span class="wc-label">LDN</span>
+          <span class="wc-time">--:--:--</span>
+          <span class="wc-date">—</span>
+        </div>
+        <div class="wc" data-tz="America/New_York" data-label="NYC">
+          <span class="wc-label">NYC</span>
+          <span class="wc-time">--:--</span>
+        </div>
+        <div class="wc" data-tz="Europe/Berlin" data-label="FFM">
+          <span class="wc-label">FFM</span>
+          <span class="wc-time">--:--</span>
+        </div>
+        <div class="wc" data-tz="Asia/Tokyo" data-label="TYO">
+          <span class="wc-label">TYO</span>
+          <span class="wc-time">--:--</span>
+        </div>
+        <div class="wc" data-tz="Asia/Hong_Kong" data-label="HKG">
+          <span class="wc-label">HKG</span>
+          <span class="wc-time">--:--</span>
+        </div>
       </div>
+      <button class="topbar-btn" id="btn-open-calendar" title="Economic calendar — upcoming releases">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 9 L21 9 M8 3 L8 7 M16 3 L16 7"/></svg>
+      </button>
     </div>
   </header>
 
@@ -102,10 +123,16 @@
           <a class="nav-item" data-target="sub-events" data-icon="📅"><span class="nav-glyph">📅</span><span class="nav-label">Events Timeline</span></a>
           <a class="nav-item" data-target="sub-news"   data-icon="📰"><span class="nav-glyph">📰</span><span class="nav-label">Live Newswire</span></a>
         </div>
+
+        <div class="nav-group" data-group="learn">
+          <div class="nav-group-title"><span class="nav-glyph">📚</span><span class="nav-label">RESEARCH</span></div>
+          <a class="nav-item nav-modal" data-modal="calendar" data-icon="📅"><span class="nav-glyph">📅</span><span class="nav-label">Economic Calendar</span></a>
+          <a class="nav-item nav-modal" data-modal="education" data-icon="🎓"><span class="nav-glyph">🎓</span><span class="nav-label">Learn / Glossary</span></a>
+        </div>
       </nav>
 
       <div class="nav-foot">
-        <div class="nav-foot-text">137+ series · 12 sections</div>
+        <div class="nav-foot-text">151+ series · 12 sections</div>
       </div>
     </aside>
 
@@ -116,6 +143,32 @@
       <section class="report" id="report">
         <div class="report-tag">SITREP · <span id="report-time">—</span></div>
         <div class="report-body" id="report-body">Bringing channels online…</div>
+      </section>
+
+      <!-- LIVE PRICE TILES — realtime feed -->
+      <section class="live-tiles" id="live-tiles" aria-label="Live market prices">
+        <header class="live-head">
+          <div class="live-head-l">
+            <span class="live-tag"><span class="dot dot-pulse"></span> LIVE FEED</span>
+            <span class="live-sub">CoinGecko · Yahoo · refreshing every 20s</span>
+          </div>
+          <div class="live-head-r">
+            <span class="live-last" id="live-last">—</span>
+          </div>
+        </header>
+        <div class="live-row" id="live-major">
+          <!-- Main live tiles -->
+        </div>
+        <details class="live-crypto-wrap">
+          <summary class="live-crypto-toggle">
+            <span class="live-crypto-icon">◆</span>
+            <span>Crypto Quick-View</span>
+            <span class="live-crypto-arrow">▾</span>
+          </summary>
+          <div class="live-row live-row-crypto" id="live-crypto">
+            <!-- BTC / ETH / SOL / XRP / ATOM -->
+          </div>
+        </details>
       </section>
 
       <!-- KPI STRIP -->
@@ -131,24 +184,24 @@
         <div class="hero-meta">
           <select class="hero-symbol" id="hero-symbol" aria-label="Hero symbol">
             <optgroup label="Equity indices">
-              <option value="SP:SPX" selected>S&amp;P 500</option>
-              <option value="DJ:DJI">Dow Jones Industrial</option>
-              <option value="NASDAQ:NDX">Nasdaq 100</option>
-              <option value="NASDAQ:IXIC">Nasdaq Composite</option>
-              <option value="TVC:RUT">Russell 2000</option>
-              <option value="TVC:UKX">FTSE 100 (UK)</option>
+              <option value="FOREXCOM:SPX500" selected>S&amp;P 500</option>
+              <option value="FOREXCOM:DJI">Dow Jones Industrial</option>
+              <option value="FOREXCOM:NSXUSD">Nasdaq 100</option>
+              <option value="NASDAQ:QQQ">Nasdaq 100 (QQQ ETF)</option>
+              <option value="AMEX:IWM">Russell 2000 (IWM)</option>
+              <option value="FOREXCOM:UK100">FTSE 100 (UK)</option>
               <option value="TVC:MCX">FTSE 250 (UK)</option>
-              <option value="XETR:DAX">DAX 40 (Germany)</option>
-              <option value="TVC:CAC40">CAC 40 (France)</option>
-              <option value="TVC:SX5E">Euro Stoxx 50</option>
-              <option value="TVC:IBEX">IBEX 35 (Spain)</option>
-              <option value="TVC:NI225">Nikkei 225 (Japan)</option>
-              <option value="TVC:HSI">Hang Seng (Hong Kong)</option>
-              <option value="SSE:000001">Shanghai Composite</option>
-              <option value="ASX:XJO">ASX 200 (Australia)</option>
+              <option value="FOREXCOM:GRXEUR">DAX 40 (Germany)</option>
+              <option value="FOREXCOM:FRXEUR">CAC 40 (France)</option>
+              <option value="CAPITALCOM:EU50">Euro Stoxx 50</option>
+              <option value="CAPITALCOM:ESP35">IBEX 35 (Spain)</option>
+              <option value="FOREXCOM:JPXJPY">Nikkei 225 (Japan)</option>
+              <option value="FOREXCOM:HKG33">Hang Seng (Hong Kong)</option>
+              <option value="AMEX:FXI">China large-caps (FXI ETF)</option>
+              <option value="FOREXCOM:AUS200">ASX 200 (Australia)</option>
               <option value="BSE:SENSEX">BSE Sensex (India)</option>
-              <option value="TSX:TSX">S&amp;P/TSX (Canada)</option>
-              <option value="BMFBOVESPA:IBOV">Bovespa (Brazil)</option>
+              <option value="AMEX:EWC">Canada (EWC ETF)</option>
+              <option value="AMEX:EWZ">Brazil (EWZ ETF)</option>
             </optgroup>
             <optgroup label="Sovereign yields">
               <option value="TVC:US02Y">US 2-Year Treasury</option>
@@ -183,11 +236,11 @@
               <option value="FX:USDCHF">USD/CHF</option>
               <option value="FX:AUDUSD">AUD/USD</option>
               <option value="FX:USDCAD">USD/CAD</option>
-              <option value="OANDA:USDCNH">USD/CNH</option>
-              <option value="FX:USDINR">USD/INR</option>
+              <option value="FX_IDC:USDCNH">USD/CNH</option>
+              <option value="FX_IDC:USDINR">USD/INR</option>
               <option value="TVC:DXY">DXY Dollar Index</option>
-              <option value="COINBASE:BTCUSD">Bitcoin</option>
-              <option value="COINBASE:ETHUSD">Ethereum</option>
+              <option value="BINANCE:BTCUSDT">Bitcoin</option>
+              <option value="BINANCE:ETHUSDT">Ethereum</option>
             </optgroup>
             <optgroup label="Volatility &amp; stress">
               <option value="TVC:VIX">VIX (S&amp;P 500 vol)</option>
@@ -214,6 +267,10 @@
           </div>
         </div>
         <div class="hero-actions">
+          <a class="hero-btn hero-link" id="hero-open-tv" target="_blank" rel="noopener" title="Open this chart on TradingView.com">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 L17 7 M9 7 L17 7 L17 15"/></svg>
+            <span>TRADINGVIEW</span>
+          </a>
           <button class="hero-btn" id="hero-tv-toggle" title="Toggle live TradingView vs. archive view">
             <span class="dot dot-pulse"></span> LIVE
           </button>
@@ -373,6 +430,94 @@
     </label>
   </template>
 
+  <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ MODALS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+
+  <!-- Calendar modal -->
+  <div class="modal" id="modal-calendar" hidden>
+    <div class="modal-scrim" data-close-modal></div>
+    <div class="modal-window calendar-window">
+      <header class="modal-head">
+        <div>
+          <div class="modal-tag">RESEARCH · UPCOMING</div>
+          <h2>Economic Calendar</h2>
+          <div class="modal-sub">High-impact releases for the next ~180 days. Click an event to add to your calendar.</div>
+        </div>
+        <div class="modal-actions">
+          <div class="calendar-toggle">
+            <button class="cv-btn is-active" data-view="list">LIST</button>
+            <button class="cv-btn" data-view="month">MONTH</button>
+          </div>
+          <button class="modal-close" data-close-modal>✕</button>
+        </div>
+      </header>
+      <div class="modal-body" id="calendar-body">
+        <div class="modal-loading">› loading calendar…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add-to-calendar mini-modal -->
+  <div class="modal modal-mini" id="modal-event-add" hidden>
+    <div class="modal-scrim" data-close-modal></div>
+    <div class="modal-window mini-window">
+      <header class="modal-head">
+        <div>
+          <div class="modal-tag" id="evadd-tag">RELEASE</div>
+          <h3 id="evadd-title">—</h3>
+          <div class="modal-sub" id="evadd-when">—</div>
+        </div>
+        <button class="modal-close" data-close-modal>✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="evadd-desc" id="evadd-desc">—</p>
+        <div class="evadd-grid">
+          <a class="evadd-btn" id="evadd-google" target="_blank" rel="noopener">
+            <span class="evadd-icon">G</span>
+            <span><strong>Google Calendar</strong><span class="evadd-sub">opens in new tab</span></span>
+          </a>
+          <a class="evadd-btn" id="evadd-outlook" target="_blank" rel="noopener">
+            <span class="evadd-icon">O</span>
+            <span><strong>Outlook</strong><span class="evadd-sub">opens in new tab</span></span>
+          </a>
+          <button class="evadd-btn" id="evadd-ics">
+            <span class="evadd-icon">⤓</span>
+            <span><strong>.ics file</strong><span class="evadd-sub">Apple, Thunderbird, etc.</span></span>
+          </button>
+          <a class="evadd-btn" id="evadd-source" target="_blank" rel="noopener">
+            <span class="evadd-icon">↗</span>
+            <span><strong>Source</strong><span class="evadd-sub" id="evadd-source-host">—</span></span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Education modal -->
+  <div class="modal" id="modal-education" hidden>
+    <div class="modal-scrim" data-close-modal></div>
+    <div class="modal-window education-window">
+      <header class="modal-head">
+        <div>
+          <div class="modal-tag">RESEARCH · LEARN</div>
+          <h2>Macro Economics Knowledge Base</h2>
+          <div class="modal-sub">Click any topic in the left rail. Glossary at the bottom.</div>
+        </div>
+        <div class="modal-actions">
+          <input class="edu-search" id="edu-search" placeholder="Search…" />
+          <button class="modal-close" data-close-modal>✕</button>
+        </div>
+      </header>
+      <div class="modal-body education-body">
+        <aside class="edu-nav" id="edu-nav">
+          <div class="modal-loading">› loading content…</div>
+        </aside>
+        <article class="edu-content" id="edu-content">
+          <div class="modal-loading">› select a topic</div>
+        </article>
+      </div>
+    </div>
+  </div>
+
   <!-- Boot screen -->
   <div class="boot" id="boot-screen">
     <img src="assets/img/logo.png" alt="" class="boot-logo" />
@@ -400,6 +545,9 @@
   <script src="assets/js/ribbon.js"></script>
   <script src="assets/js/category.js"></script>
   <script src="assets/js/clocks.js"></script>
+  <script src="assets/js/live-prices.js"></script>
+  <script src="assets/js/calendar-modal.js"></script>
+  <script src="assets/js/education-modal.js"></script>
   <script src="assets/js/main.js"></script>
 </body>
 </html>

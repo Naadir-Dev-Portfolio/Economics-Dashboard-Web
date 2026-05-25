@@ -31,18 +31,22 @@
       return;
     }
 
-    // Pull every section + events + news in parallel
+    // Pull every section + events + news + calendar + education in parallel
     const keys = Object.keys(state.manifest.sections);
-    const [sectionResults, events, news, narrative] = await Promise.all([
+    const [sectionResults, events, news, narrative, calendar, education] = await Promise.all([
       Promise.all(keys.map(k => DataLoader.section(k))),
       DataLoader.events(),
       DataLoader.news(),
       DataLoader.narrative(),
+      DataLoader.calendar(),
+      DataLoader.education(),
     ]);
     keys.forEach((k, i) => { state.sectionData[k] = sectionResults[i]; });
     state.events = events && events.events ? events.events : [];
     state.news = news || { items: [] };
     state.narrative = narrative || null;
+    state.calendar = calendar || { events: [] };
+    state.education = education || { categories: [] };
 
     initModules();
     wireTopbar();
@@ -50,6 +54,19 @@
     renderReport();
     renderFooterUpdate();
     hideBootScreen();
+  }
+
+  function initModules() {
+    window.Hero.init(state.sectionData);
+    window.KPI.init(state.sectionData, state.calendar);
+    window.LivePrices?.init(state.sectionData);
+    window.NewsFeed.init(state.news);
+    window.EventsTimeline.init(state.events);
+    window.Ribbon.init(state.sectionData);
+    window.Clocks.init();
+    window.CategoryMatrix.init(state.manifest, state.sectionData);
+    window.CalendarModal?.init(state.calendar);
+    window.EducationModal?.init(state.education);
   }
 
   function wireSidebar() {
@@ -109,16 +126,6 @@
     }
   }
 
-  function initModules() {
-    window.Hero.init(state.sectionData);
-    window.KPI.init(state.sectionData);
-    window.NewsFeed.init(state.news);
-    window.EventsTimeline.init(state.events);
-    window.Ribbon.init(state.sectionData);
-    window.Clocks.init();
-    window.CategoryMatrix.init(state.manifest, state.sectionData);
-  }
-
   function wireTopbar() {
     $$('.region-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -130,16 +137,6 @@
     });
     $('#btn-collapse-all')?.addEventListener('click', () => window.CategoryMatrix.collapseAll());
     $('#btn-expand-all')?.addEventListener('click', () => window.CategoryMatrix.expandAll());
-
-    // Live status pill
-    const status = $('#live-status');
-    if (state.manifest?.generated_at) {
-      const ageHr = (Date.now() - new Date(state.manifest.generated_at).getTime()) / 3600000;
-      if (ageHr > 36) {
-        status.classList.add('is-stale');
-        status.querySelector('.status-label').textContent = 'STALE';
-      }
-    }
   }
 
   function applyRegion() {

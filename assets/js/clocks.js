@@ -1,83 +1,92 @@
 /**
- * clocks.js — major exchange clocks and open/closed badges.
+ * clocks.js — topbar world clocks + sidebar market-hours tiles.
  */
 (function (global) {
   'use strict';
 
   const EXCHANGES = [
-    { id: 'LON', name: 'LONDON',   tz: 'Europe/London',   openH: 8,  closeH: 16 + 0.5 },
-    { id: 'NYC', name: 'NEW YORK', tz: 'America/New_York', openH: 9.5, closeH: 16 },
-    { id: 'TKY', name: 'TOKYO',    tz: 'Asia/Tokyo',      openH: 9,   closeH: 15 },
-    { id: 'HKG', name: 'HONG KONG',tz: 'Asia/Hong_Kong',  openH: 9.5, closeH: 16 },
+    { id: 'LON', name: 'LONDON',    tz: 'Europe/London',     openH: 8,   closeH: 16.5 },
+    { id: 'NYC', name: 'NEW YORK',  tz: 'America/New_York',  openH: 9.5, closeH: 16 },
+    { id: 'FFM', name: 'FRANKFURT', tz: 'Europe/Berlin',     openH: 9,   closeH: 17.5 },
+    { id: 'TYO', name: 'TOKYO',     tz: 'Asia/Tokyo',        openH: 9,   closeH: 15 },
+    { id: 'HKG', name: 'HONG KONG', tz: 'Asia/Hong_Kong',    openH: 9.5, closeH: 16 },
+    { id: 'SYD', name: 'SYDNEY',    tz: 'Australia/Sydney',  openH: 10,  closeH: 16 },
   ];
 
   function init() {
+    // Sidebar market-hours tiles
     const grid = document.getElementById('clocks-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-    EXCHANGES.forEach(ex => {
-      const t = document.createElement('div');
-      t.className = 'clock-tile';
-      t.dataset.tz = ex.tz;
-      t.dataset.id = ex.id;
-      t.dataset.open = ex.openH;
-      t.dataset.close = ex.closeH;
-      t.innerHTML = `
-        <div class="ct-name">${ex.name}</div>
-        <div class="ct-time">--:--</div>
-        <div class="ct-status">—</div>
-      `;
-      grid.appendChild(t);
-    });
+    if (grid) {
+      grid.innerHTML = '';
+      EXCHANGES.forEach(ex => {
+        const t = document.createElement('div');
+        t.className = 'clock-tile';
+        t.dataset.tz = ex.tz;
+        t.dataset.id = ex.id;
+        t.dataset.open  = ex.openH;
+        t.dataset.close = ex.closeH;
+        t.innerHTML = `
+          <div class="ct-name">${ex.name}</div>
+          <div class="ct-time">--:--</div>
+          <div class="ct-status">—</div>
+        `;
+        grid.appendChild(t);
+      });
+    }
+
     tick();
     setInterval(tick, 1000);
-
-    // UTC clock in topbar
-    setInterval(updateUTC, 1000);
-    updateUTC();
   }
 
   function tick() {
+    // Sidebar tiles (already had this logic)
     document.querySelectorAll('.clock-tile').forEach(t => {
       const tz = t.dataset.tz;
-      const openH = parseFloat(t.dataset.open);
+      const openH  = parseFloat(t.dataset.open);
       const closeH = parseFloat(t.dataset.close);
       try {
         const now = new Date();
-        const opts = { hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false };
-        const time = new Intl.DateTimeFormat('en-GB', opts).format(now);
+        const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false }).format(now);
         t.querySelector('.ct-time').textContent = time;
-        // Determine local hour-fraction in that tz
-        const fmt = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: 'numeric', weekday: 'short', timeZone: tz, hour12: false });
-        const parts = fmt.formatToParts(now);
+        const parts = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: 'numeric', weekday: 'short', timeZone: tz, hour12: false }).formatToParts(now);
         let hour = 0, min = 0, weekday = '';
         parts.forEach(p => {
-          if (p.type === 'hour') hour = parseInt(p.value, 10);
-          if (p.type === 'minute') min = parseInt(p.value, 10);
+          if (p.type === 'hour')    hour = parseInt(p.value, 10);
+          if (p.type === 'minute')  min  = parseInt(p.value, 10);
           if (p.type === 'weekday') weekday = p.value;
         });
         const localFrac = hour + min / 60;
         const isWeekend = weekday === 'Sat' || weekday === 'Sun';
         const isOpen = !isWeekend && localFrac >= openH && localFrac < closeH;
         const status = t.querySelector('.ct-status');
-        if (isOpen) {
-          status.textContent = 'OPEN';
-          status.className = 'ct-status open';
-        } else {
-          status.textContent = 'CLOSED';
-          status.className = 'ct-status closed';
-        }
-      } catch (e) {
-        // ignore
-      }
+        status.textContent = isOpen ? 'OPEN' : 'CLOSED';
+        status.className = 'ct-status ' + (isOpen ? 'open' : 'closed');
+      } catch (_) { /* ignore */ }
     });
-  }
 
-  function updateUTC() {
-    const el = document.querySelector('#clock-utc .clock-time');
-    if (!el) return;
-    const now = new Date();
-    el.textContent = now.toISOString().slice(11, 16);
+    // Topbar world clocks
+    document.querySelectorAll('.wc').forEach(wc => {
+      const tz = wc.dataset.tz;
+      if (!tz) return;
+      try {
+        const now = new Date();
+        const showSeconds = wc.classList.contains('wc-primary');
+        const fmt = new Intl.DateTimeFormat('en-GB', {
+          hour: '2-digit', minute: '2-digit',
+          second: showSeconds ? '2-digit' : undefined,
+          timeZone: tz, hour12: false,
+        });
+        const timeEl = wc.querySelector('.wc-time');
+        if (timeEl) timeEl.textContent = fmt.format(now);
+        const dateEl = wc.querySelector('.wc-date');
+        if (dateEl) {
+          dateEl.textContent = new Intl.DateTimeFormat('en-GB', {
+            weekday: 'short', day: 'numeric', month: 'short',
+            timeZone: tz,
+          }).format(now);
+        }
+      } catch (_) { /* ignore */ }
+    });
   }
 
   global.Clocks = { init };

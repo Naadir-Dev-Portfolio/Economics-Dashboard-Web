@@ -15,25 +15,27 @@
 
   /** Map TradingView symbol → local section.sid for archive fallback + quote header. */
   const TV_SYMBOL_TO_LOCAL = {
-    // Equities
-    'SP:SPX':                 ['markets', 'sp500'],
-    'DJ:DJI':                 ['markets', 'dow'],
-    'NASDAQ:NDX':             ['markets', 'nasdaq'],
-    'NASDAQ:IXIC':            ['markets', 'nasdaq'],
-    'TVC:RUT':                ['markets', 'russell'],
-    'TVC:UKX':                ['markets', 'ftse100'],
+    // Equities (CFD / ETF proxies that work in the free embedded widget)
+    'FOREXCOM:SPX500':        ['markets', 'sp500'],
+    'AMEX:SPY':               ['markets', 'sp500'],
+    'FOREXCOM:DJI':           ['markets', 'dow'],
+    'AMEX:DIA':               ['markets', 'dow'],
+    'FOREXCOM:NSXUSD':        ['markets', 'nasdaq'],
+    'NASDAQ:QQQ':             ['markets', 'nasdaq'],
+    'AMEX:IWM':               ['markets', 'russell'],
+    'FOREXCOM:UK100':         ['markets', 'ftse100'],
     'TVC:MCX':                ['markets', 'ftse250'],
-    'XETR:DAX':               ['markets', 'dax'],
-    'TVC:CAC40':              ['markets', 'cac40'],
-    'TVC:SX5E':               ['markets', 'stoxx50'],
-    'TVC:IBEX':               ['markets', 'ibex'],
-    'TVC:NI225':              ['markets', 'nikkei'],
-    'TVC:HSI':                ['markets', 'hangseng'],
-    'SSE:000001':             ['markets', 'shcomp'],
-    'ASX:XJO':                ['markets', 'asx200'],
+    'FOREXCOM:GRXEUR':        ['markets', 'dax'],
+    'FOREXCOM:FRXEUR':        ['markets', 'cac40'],
+    'CAPITALCOM:EU50':        ['markets', 'stoxx50'],
+    'CAPITALCOM:ESP35':       ['markets', 'ibex'],
+    'FOREXCOM:JPXJPY':        ['markets', 'nikkei'],
+    'FOREXCOM:HKG33':         ['markets', 'hangseng'],
+    'AMEX:FXI':               ['markets', 'shcomp'],
+    'FOREXCOM:AUS200':        ['markets', 'asx200'],
     'BSE:SENSEX':             ['markets', 'sensex'],
-    'TSX:TSX':                ['markets', 'tsx'],
-    'BMFBOVESPA:IBOV':        ['markets', 'bovespa'],
+    'AMEX:EWC':               ['markets', 'tsx'],
+    'AMEX:EWZ':               ['markets', 'bovespa'],
     // Bonds
     'TVC:US02Y':              ['bonds', 'us_2y'],
     'TVC:US05Y':              ['bonds', 'us_5y'],
@@ -65,11 +67,11 @@
     'FX:USDCHF':              ['fx', 'usd_chf'],
     'FX:AUDUSD':              ['fx', 'aud_usd'],
     'FX:USDCAD':              ['fx', 'usd_cad'],
-    'OANDA:USDCNH':           ['fx', 'usd_cny'],
-    'FX:USDINR':              ['fx', 'usd_inr'],
+    'FX_IDC:USDCNH':          ['fx', 'usd_cny'],
+    'FX_IDC:USDINR':          ['fx', 'usd_inr'],
     'TVC:DXY':                ['fx', 'dxy'],
-    'COINBASE:BTCUSD':        ['fx', 'btc_usd'],
-    'COINBASE:ETHUSD':        ['fx', 'eth_usd'],
+    'BINANCE:BTCUSDT':        ['fx', 'btc_usd'],
+    'BINANCE:ETHUSDT':        ['fx', 'eth_usd'],
     // Volatility
     'TVC:VIX':                ['risk', 'vix'],
     'TVC:MOVE':               ['risk', 'move_index'],
@@ -87,16 +89,16 @@
   };
 
   const REGION_TO_SYMBOL = {
-    GLOBAL: 'SP:SPX',
-    US:     'SP:SPX',
-    UK:     'TVC:UKX',
-    EU:     'XETR:DAX',
-    ASIA:   'TVC:NI225',
+    GLOBAL: 'FOREXCOM:SPX500',
+    US:     'FOREXCOM:SPX500',
+    UK:     'FOREXCOM:UK100',
+    EU:     'FOREXCOM:GRXEUR',
+    ASIA:   'FOREXCOM:JPXJPY',
   };
 
   const state = {
     mode: 'live',           // 'live' | 'archive'
-    symbol: 'SP:SPX',
+    symbol: 'FOREXCOM:SPX500',
     tvWidget: null,
     archiveChart: null,
     annotations: [],        // [{id, ts, title, blurb, tag}]
@@ -177,6 +179,9 @@
       state.currentSeries = null;
       updateHeroQuote(null);
     }
+    // Keep the "Open in TradingView" link in sync
+    const tvLink = document.getElementById('hero-open-tv');
+    if (tvLink) tvLink.href = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
     render();
   }
 

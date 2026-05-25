@@ -73,6 +73,10 @@ jobs:
         run: python scripts/fetch_news.py
         continue-on-error: true
 
+      - name: Rebuild economic calendar
+        run: python scripts/fetch_calendar.py
+        continue-on-error: true
+
       - name: Commit refreshed data
         run: |
           git config user.name  "github-actions[bot]"

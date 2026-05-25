@@ -58,6 +58,8 @@
     events:    () => mergedEvents(),
     news:      () => fetchJSON(`${BASE}/news.json`),
     narrative: () => fetchJSON(`${BASE}/narrative.json`),
+    calendar:  () => fetchJSON(`${BASE}/calendar.json`),
+    education: () => fetchJSON(`${BASE}/education.json`),
     clear:     () => { cache.clear(); inflight.clear(); },
   };
 })(window);
