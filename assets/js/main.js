@@ -90,6 +90,37 @@
     $('#sidebar-toggle')?.addEventListener('click', toggle);
     $('#nav-collapse')?.addEventListener('click', toggle);
 
+    // Tap outside the sidebar (the scrim area) to close on mobile
+    document.addEventListener('click', (e) => {
+      if (!isMobile()) return;
+      if (!shell.classList.contains('nav-mobile-open')) return;
+      const sidebar = document.querySelector('.nav-sidebar');
+      const toggleBtn = document.querySelector('#sidebar-toggle');
+      if (sidebar?.contains(e.target) || toggleBtn?.contains(e.target)) return;
+      shell.classList.remove('nav-mobile-open');
+    });
+
+    // Esc to close mobile nav and modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      shell.classList.remove('nav-mobile-open');
+      ['modal-calendar', 'modal-event-add', 'modal-education'].forEach(id => {
+        const m = document.getElementById(id);
+        if (m && !m.hidden) m.hidden = true;
+      });
+    });
+
+    // Lock body scroll when a modal is open
+    const lockObserver = new MutationObserver(() => {
+      const anyOpen = ['modal-calendar', 'modal-event-add', 'modal-education']
+        .some(id => { const m = document.getElementById(id); return m && !m.hidden; });
+      document.body.style.overflow = anyOpen ? 'hidden' : '';
+    });
+    ['modal-calendar', 'modal-event-add', 'modal-education'].forEach(id => {
+      const m = document.getElementById(id);
+      if (m) lockObserver.observe(m, { attributes: true, attributeFilter: ['hidden'] });
+    });
+
     // Nav-item click → scroll to target + expand the section if it's a cat-panel
     $$('.nav-item').forEach(item => {
       item.addEventListener('click', (e) => {
