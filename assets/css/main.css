@@ -1404,9 +1404,38 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
   color: var(--tx-3);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   flex: 1;
+  position: relative;
+  cursor: help;
+}
+/* Styled tooltip — full description on hover (native title attribute is
+   still set as a fallback for touch / accessibility). */
+.cat-blurb[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 110;
+  white-space: normal;
+  width: max-content;
+  max-width: 320px;
+  padding: 8px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--bd-3);
+  border-radius: var(--radius);
+  color: var(--tx-1);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  pointer-events: none;
+  animation: tooltipIn 0.12s ease;
+}
+@keyframes tooltipIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
+@media (hover: none) {
+  .cat-blurb[data-tooltip]:hover::after { display: none; }
 }
 .cat-head-right { display: flex; gap: 6px; align-items: center; }
-.cat-tv, .cat-toggle {
+.cat-tv, .cat-toggle, .cat-export {
   background: transparent;
   border: 1px solid var(--bd-2);
   color: var(--tx-2);
@@ -1416,7 +1445,9 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
   display: inline-flex; align-items: center; justify-content: center;
   transition: all 0.12s ease;
 }
-.cat-tv:hover, .cat-toggle:hover { color: var(--rd-0); border-color: var(--rd-line); }
+.cat-tv:hover, .cat-toggle:hover, .cat-export:hover { color: var(--rd-0); border-color: var(--rd-line); }
+/* Brief affirmative flash after the CSV download fires */
+.cat-export.is-flash { color: #4ade80; border-color: rgba(74,222,128,0.5); }
 .cat-chevron { font-size: 11px; transition: transform 0.18s ease; }
 
 .cat-body { padding: 12px 14px; }

@@ -41,7 +41,13 @@
       panel.id = `cat-${key}`;
       panel.querySelector('.cat-glyph').textContent = ICON_MAP[meta.icon] || '◆';
       panel.querySelector('.cat-title').textContent = meta.title;
-      panel.querySelector('.cat-blurb').textContent = meta.blurb;
+      const blurbEl = panel.querySelector('.cat-blurb');
+      blurbEl.textContent = meta.blurb;
+      // Tooltip-on-hover for the truncated blurb (native title is the
+      // a11y / touch fallback; CSS pseudo-element renders the dark-themed
+      // version on hover).
+      blurbEl.setAttribute('title', meta.blurb);
+      blurbEl.setAttribute('data-tooltip', meta.blurb);
 
       // Header buttons
       panel.querySelector('.cat-toggle').addEventListener('click', () => {
@@ -51,6 +57,10 @@
         if (h?.chart) setTimeout(() => h.chart.resize(), 50);
       });
       panel.querySelector('.cat-tv').addEventListener('click', () => sendToHero(key));
+      panel.querySelector('.cat-export').addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        exportFocusedSeries(key, ev.currentTarget);
+      });
 
       grid.appendChild(frag);
 
@@ -134,6 +144,54 @@
       const sp = chip.querySelector('.chip-spark');
       global.ChartKit.createSparkline(sp, series, { range: '1Y' });
     });
+  }
+
+  /**
+   * Export the currently-focused series in this section as a CSV download.
+   * Filename: <series_id>_<section>_<YYYY-MM-DD>.csv
+   * Contents: an iso-date,value row per observation — the most granular
+   * data we hold (monthly for FRED macro, weekly for fuel, daily for any
+   * Yahoo-sourced series).
+   */
+  function exportFocusedSeries(key, buttonEl) {
+    const handle = panelHandles.get(key);
+    if (!handle?.focusSid) return;
+    const sid = handle.focusSid;
+    const series = handle.sectionPayload.series[sid];
+    if (!series || !Array.isArray(series.data) || !series.data.length) return;
+
+    const header = [
+      `# ${series.name}${series.unit ? ' (' + series.unit + ')' : ''}`,
+      series.note ? `# ${series.note}` : null,
+      series.source ? `# Source: ${series.source}` : null,
+      `# Exported from Naadir's Macro Economic Ops Dashboard on ${new Date().toISOString().slice(0,19)}Z`,
+      'date,value',
+    ].filter(Boolean).join('\n');
+
+    const rows = series.data.map(([ts, v]) => {
+      const d = new Date(ts).toISOString().slice(0, 10);
+      return `${d},${v}`;
+    }).join('\n');
+
+    const csv = header + '\n' + rows + '\n';
+    const today = new Date().toISOString().slice(0, 10);
+    const filename = `${sid}_${key}_${today}.csv`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    // Brief green flash on the button so the user gets confirmation
+    if (buttonEl) {
+      buttonEl.classList.add('is-flash');
+      setTimeout(() => buttonEl.classList.remove('is-flash'), 700);
+    }
   }
 
   function sendToHero(key) {
