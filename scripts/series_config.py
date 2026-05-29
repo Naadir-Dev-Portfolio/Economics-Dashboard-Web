@@ -96,7 +96,7 @@ SECTIONS = {
             {"id": "us_core_yoy",  "name": "US Core CPI YoY",      "region": "US", "unit": "%", "fred": "CPILFESL",         "transform": "yoy_pct"},
             {"id": "us_pce_yoy",   "name": "US PCE YoY",           "region": "US", "unit": "%", "fred": "PCEPI",            "transform": "yoy_pct", "note": "Fed's preferred gauge."},
             {"id": "us_core_pce",  "name": "US Core PCE YoY",      "region": "US", "unit": "%", "fred": "PCEPILFE",         "transform": "yoy_pct"},
-            {"id": "uk_cpi_yoy",   "name": "UK CPI YoY",           "region": "UK", "unit": "%", "fred": "GBRCPIALLMINMEI",  "transform": "yoy_pct"},
+            {"id": "uk_cpi_yoy",   "name": "UK CPI YoY",           "region": "UK", "unit": "%", "ons": "D7G7", "ons_dataset": "mm23", "ons_path": "economy/inflationandpriceindices", "fred": "GBRCPIALLMINMEI", "transform": "yoy_pct", "note": "ONS CPI 12-month rate (published ~6w lag). FRED-OECD fallback ~3m further behind."},
             {"id": "eu_cpi_yoy",   "name": "Eurozone CPI YoY",     "region": "EU", "unit": "%", "fred": "CP0000EZ19M086NEST","transform": "yoy_pct"},
             {"id": "jp_cpi_yoy",   "name": "Japan CPI YoY",        "region": "JP", "unit": "%", "fred": "JPNCPIALLMINMEI",  "transform": "yoy_pct"},
             {"id": "de_cpi_yoy",   "name": "Germany CPI YoY",      "region": "DE", "unit": "%", "fred": "DEUCPIALLMINMEI",  "transform": "yoy_pct"},
@@ -216,7 +216,7 @@ SECTIONS = {
         "blurb": "Jobs, unemployment, participation, age & gender splits.",
         "series": [
             # ── UK headline + age bands + gender splits (the granularity the user asked for) ──
-            {"id": "uk_unrate",         "name": "UK Unemployment Rate",       "region": "UK", "unit": "%", "fred": "LRHUTTTTGBM156S",                 "note": "Headline UK 15+ rate, OECD via FRED, monthly."},
+            {"id": "uk_unrate",         "name": "UK Unemployment Rate",       "region": "UK", "unit": "%", "ons": "MGSX", "ons_dataset": "lms", "ons_path": "employmentandlabourmarket/peoplenotinwork/unemployment", "fred": "LRHUTTTTGBM156S", "note": "ONS direct (16+, SA) — published with ~6-week lag. FRED-OECD fallback runs ~3 months further behind."},
             {"id": "uk_unrate_youth",   "name": "UK Youth (15-24)",           "region": "UK", "unit": "%", "fred": "LRHU24TTGBM156S",                 "note": "OECD UK unemployment rate ages 15-24, monthly."},
             {"id": "uk_unrate_core",    "name": "UK Core-Age (25-54)",        "region": "UK", "unit": "%", "fred": "LRUN25TTGBQ156S", "freq": "q",    "note": "OECD UK unemployment rate ages 25-54, quarterly."},
             {"id": "uk_unrate_senior",  "name": "UK Senior (55-64)",          "region": "UK", "unit": "%", "fred": "LRUN55TTGBQ156S", "freq": "q",    "note": "OECD UK unemployment rate ages 55-64, quarterly."},

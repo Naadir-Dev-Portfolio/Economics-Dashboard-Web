@@ -101,6 +101,46 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
     return out
 
 
+# ── ONS (Office for National Statistics) time series ──
+# Direct ONS data is typically 3+ months fresher than the OECD-aggregated
+# equivalents on FRED. Pattern: ons.gov.uk/{topic_path}/timeseries/{id}/{dataset}/data
+_ONS_MONTH = {'JAN':1,'FEB':2,'MAR':3,'APR':4,'MAY':5,'JUN':6,'JUL':7,'AUG':8,'SEP':9,'OCT':10,'NOV':11,'DEC':12}
+
+def fetch_ons(series_id: str, dataset: str, topic_path: str) -> list[list]:
+    """Pull a monthly ONS time series. Returns [[ts_ms, value], ...]."""
+    url = f"https://www.ons.gov.uk/{topic_path}/timeseries/{series_id}/{dataset}/data"
+    try:
+        r = requests.get(url, timeout=30, headers={"Accept": "application/json"})
+        r.raise_for_status()
+        payload = r.json()
+    except (requests.RequestException, ValueError) as e:
+        log.warning("ONS %s failed: %s", series_id, e)
+        return []
+
+    months = payload.get("months") or []
+    out: list[list] = []
+    for obs in months:
+        date_str = (obs.get("date") or "").strip()
+        val_str  = (obs.get("value") or "").strip()
+        if not date_str or not val_str:
+            continue
+        parts = date_str.split()
+        if len(parts) != 2:
+            continue
+        try:
+            year = int(parts[0])
+            mnum = _ONS_MONTH.get(parts[1].upper()[:3])
+            if not mnum:
+                continue
+            val = float(val_str)
+        except (ValueError, TypeError):
+            continue
+        iso = f"{year:04d}-{mnum:02d}-01"
+        out.append([_to_ms(iso), val])
+    out.sort(key=lambda r: r[0])
+    return out
+
+
 _UK_HPI_CACHE: dict[str, list[list]] = {}
 
 def fetch_uk_hpi_region(region_name: str) -> list[list]:
@@ -369,7 +409,13 @@ def fetch_one(s: dict) -> dict | None:
     data: list[list] = []
     source = None
 
-    if s.get("yahoo"):
+    if s.get("ons"):
+        log.info("  → %s via ONS (%s)", sid, s["ons"])
+        data = fetch_ons(s["ons"], s.get("ons_dataset", "lms"), s.get("ons_path", "employmentandlabourmarket"))
+        if data:
+            source = f"ONS ({s['ons']})"
+
+    if (not data) and s.get("yahoo"):
         log.info("  → %s via Yahoo (%s)", sid, s["yahoo"])
         data = fetch_yahoo(s["yahoo"])
         if data:

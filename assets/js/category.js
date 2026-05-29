@@ -43,10 +43,12 @@
       panel.querySelector('.cat-title').textContent = meta.title;
       const blurbEl = panel.querySelector('.cat-blurb');
       blurbEl.textContent = meta.blurb;
-      // Tooltip-on-hover for the truncated blurb (native title is the
-      // a11y / touch fallback; CSS pseudo-element renders the dark-themed
-      // version on hover).
-      blurbEl.setAttribute('title', meta.blurb);
+      // CSS tooltip renders instantly on hover via the data-tooltip
+      // attribute. We deliberately do NOT set the native `title` here
+      // — the browser's built-in title tooltip has a 1-2s delay that
+      // competes with our styled one. aria-label keeps it accessible
+      // for screen readers without triggering the native tooltip.
+      blurbEl.setAttribute('aria-label', meta.blurb);
       blurbEl.setAttribute('data-tooltip', meta.blurb);
 
       // Header buttons
@@ -101,7 +103,9 @@
       chgEl.textContent = `${arrow} ${Math.abs(chg).toFixed(2)}% 1Y`;
       chgEl.className = `cat-focus-change ${cls}`;
     }
-    panel.querySelector('.cat-focus-source').textContent = series.source || '';
+    const asOf = formatAsOf(stats.last_date);
+    panel.querySelector('.cat-focus-source').textContent =
+      asOf ? `${series.source || ''} · as of ${asOf}` : (series.source || '');
 
     // Chart
     const chartEl = panel.querySelector('.cat-focus-chart');
@@ -228,6 +232,17 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /** "2026-02-01" → "Feb 2026" (or "29 May 2026" for recent values). */
+  function formatAsOf(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00Z');
+    if (isNaN(d)) return '';
+    const ageDays = (Date.now() - d.getTime()) / 86_400_000;
+    return ageDays < 90
+      ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+      : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
   }
 
   global.CategoryMatrix = { init, renderFocus, collapseAll, expandAll };

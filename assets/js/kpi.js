@@ -70,6 +70,7 @@
         chgHTML = `<span class="kpi-change ${ngcls}"><span class="kpi-arrow ${cls}">${arrow}</span>${Math.abs(chg).toFixed(2)}% 1Y</span>`;
       }
 
+      const asOf = formatAsOf(stats.last_date);
       tile.innerHTML = `
         <div class="kpi-label">${label}<span class="kpi-region">${region}</span></div>
         <div class="kpi-row-vals">
@@ -77,6 +78,7 @@
           <span class="kpi-unit">${series.unit || ''}</span>
         </div>
         ${chgHTML}
+        ${asOf ? `<span class="kpi-asof" title="Latest observation in this series">as of ${asOf}</span>` : ''}
         <div class="kpi-spark"></div>
         <div class="kpi-countdown" data-cal-key="${calKey || ''}">
           <span class="cd-label">NEXT</span>
@@ -168,6 +170,21 @@
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  /**
+   * Format "2026-02-01" → "Feb 2026" (or "29 May 2026" for recent dates).
+   * Returns "" if missing. Used to tell the user how fresh the value is.
+   */
+  function formatAsOf(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + 'T00:00:00Z');
+    if (isNaN(d)) return '';
+    // Within the last 90 days: show full date. Older: just month + year.
+    const ageDays = (Date.now() - d.getTime()) / 86_400_000;
+    return ageDays < 90
+      ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+      : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
   }
 
   global.KPI = { init };
