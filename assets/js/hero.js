@@ -121,6 +121,10 @@
       container.innerHTML = '<div style="padding:40px;color:#6e6e6e;font-family:monospace;font-size:12px;">TradingView script failed to load.</div>';
       return;
     }
+    // Mark TradingView as live as soon as we hand off to its loader.
+    // (The widget renders in an iframe so we can't read load failures, but
+    // the script loading without exceptions is a reasonable proxy.)
+    global.HealthPanel?.setRuntimeStatus('tradingview', true);
     state.tvWidget = new global.TradingView.widget({
       width: '100%',
       height: '100%',

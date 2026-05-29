@@ -77,6 +77,10 @@ jobs:
         run: python scripts/fetch_calendar.py
         continue-on-error: true
 
+      - name: Rebuild data-source health snapshot
+        run: python scripts/build_health.py
+        continue-on-error: true
+
       - name: Commit refreshed data
         run: |
           git config user.name  "github-actions[bot]"

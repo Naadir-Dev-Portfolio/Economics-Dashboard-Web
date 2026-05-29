@@ -31,15 +31,16 @@
       return;
     }
 
-    // Pull every section + events + news + calendar + education in parallel
+    // Pull every section + events + news + calendar + education + health in parallel
     const keys = Object.keys(state.manifest.sections);
-    const [sectionResults, events, news, narrative, calendar, education] = await Promise.all([
+    const [sectionResults, events, news, narrative, calendar, education, health] = await Promise.all([
       Promise.all(keys.map(k => DataLoader.section(k))),
       DataLoader.events(),
       DataLoader.news(),
       DataLoader.narrative(),
       DataLoader.calendar(),
       DataLoader.education(),
+      DataLoader.health(),
     ]);
     keys.forEach((k, i) => { state.sectionData[k] = sectionResults[i]; });
     state.events = events && events.events ? events.events : [];
@@ -47,6 +48,7 @@
     state.narrative = narrative || null;
     state.calendar = calendar || { events: [] };
     state.education = education || { categories: [] };
+    state.health = health || { sources: [] };
 
     initModules();
     wireTopbar();
@@ -67,6 +69,7 @@
     window.CategoryMatrix.init(state.manifest, state.sectionData);
     window.CalendarModal?.init(state.calendar);
     window.EducationModal?.init(state.education);
+    window.HealthPanel?.init(state.health);
   }
 
   function wireSidebar() {

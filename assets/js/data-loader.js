@@ -60,6 +60,7 @@
     narrative: () => fetchJSON(`${BASE}/narrative.json`),
     calendar:  () => fetchJSON(`${BASE}/calendar.json`),
     education: () => fetchJSON(`${BASE}/education.json`),
+    health:    () => fetchJSON(`${BASE}/health.json`),
     clear:     () => { cache.clear(); inflight.clear(); },
   };
 })(window);

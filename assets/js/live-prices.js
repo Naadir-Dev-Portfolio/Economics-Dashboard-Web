@@ -140,9 +140,14 @@
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`;
     try {
       const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) return {};
-      return await r.json();
-    } catch (_) { return {}; }
+      if (!r.ok) { global.HealthPanel?.setRuntimeStatus('coingecko', false); return {}; }
+      const j = await r.json();
+      global.HealthPanel?.setRuntimeStatus('coingecko', Object.keys(j).length > 0);
+      return j;
+    } catch (_) {
+      global.HealthPanel?.setRuntimeStatus('coingecko', false);
+      return {};
+    }
   }
 
   // Yahoo Finance public quote endpoint; needs a CORS proxy from browsers.
@@ -164,9 +169,11 @@
         if (!list.length) continue;
         const map = {};
         list.forEach(q => { map[q.symbol] = q; });
+        global.HealthPanel?.setRuntimeStatus('yahoo_proxy', true);
         return map;
       } catch (_) { /* try next */ }
     }
+    global.HealthPanel?.setRuntimeStatus('yahoo_proxy', false);
     return {};
   }
 
