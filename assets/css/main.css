@@ -127,6 +127,10 @@ button { font-family: inherit; }
   font-family: var(--ff-sans);
   animation: slideDown 0.3s ease;
 }
+/* `display: flex` above overrides the HTML `hidden` attribute (which is
+   `display: none` by default), so the banner stayed visible on load.
+   Re-assert none when [hidden] is set. */
+.stale-banner[hidden] { display: none !important; }
 @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 .stale-icon {
   font-size: 18px;
