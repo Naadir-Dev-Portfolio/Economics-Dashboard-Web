@@ -55,7 +55,58 @@
     wireSidebar();
     renderReport();
     renderFooterUpdate();
+    checkScheduleStaleness();
     hideBootScreen();
+  }
+
+  /**
+   * Show a banner above the topbar when the BoE / ECB hand-curated date
+   * lists are within 90 days of running out. Reminds the user how to refresh.
+   * Dismiss → suppressed in localStorage for 7 days.
+   */
+  function checkScheduleStaleness() {
+    const banner = $('#stale-banner');
+    if (!banner) return;
+    const events = state.calendar?.events || [];
+    const now = Date.now();
+    const STALE_THRESHOLD_DAYS = 90;
+
+    const lastFor = (key) => {
+      const xs = events.filter(e => e.key === key && new Date(e.datetime).getTime() > now)
+                       .map(e => e.datetime.slice(0, 10))
+                       .sort();
+      return xs.length ? xs[xs.length - 1] : null;
+    };
+    const daysUntil = (iso) => Math.floor((new Date(iso + 'T00:00:00Z').getTime() - now) / 86_400_000);
+
+    const issues = [];
+    const boeLast = lastFor('boe_mpc');
+    const ecbLast = lastFor('ecb_meeting');
+    if (!boeLast || daysUntil(boeLast) < STALE_THRESHOLD_DAYS) {
+      issues.push({ name: 'BoE MPC', last: boeLast, days: boeLast ? daysUntil(boeLast) : -999 });
+    }
+    if (!ecbLast || daysUntil(ecbLast) < STALE_THRESHOLD_DAYS) {
+      issues.push({ name: 'ECB Governing Council', last: ecbLast, days: ecbLast ? daysUntil(ecbLast) : -999 });
+    }
+    if (!issues.length) { banner.hidden = true; return; }
+
+    // Check 7-day dismiss
+    try {
+      const ts = parseInt(localStorage.getItem('staleBannerDismissedAt') || '0', 10);
+      if (ts && Date.now() - ts < 7 * 86_400_000) { banner.hidden = true; return; }
+    } catch (_) {}
+
+    const summary = issues.map(i => i.last
+      ? `<strong>${i.name}</strong> ends ${i.last} (${i.days} day${i.days === 1 ? '' : 's'} left)`
+      : `<strong>${i.name}</strong> schedule has run out`).join(' &nbsp;·&nbsp; ');
+    $('#stale-body').innerHTML =
+      `${summary}. Run <code>python scripts/refresh_committee_dates.py</code> from the repo locally, then commit &amp; push.`;
+    banner.hidden = false;
+
+    $('#stale-dismiss')?.addEventListener('click', () => {
+      try { localStorage.setItem('staleBannerDismissedAt', String(Date.now())); } catch (_) {}
+      banner.hidden = true;
+    }, { once: true });
   }
 
   function initModules() {
