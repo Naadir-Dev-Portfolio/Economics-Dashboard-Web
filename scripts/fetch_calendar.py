@@ -1,12 +1,17 @@
 """
-Build data/calendar.json — the next ~180 days of high-impact economic events.
+Build data/calendar.json — economic events for the next ~12 months.
 
-A mix of:
-  * Hardcoded central-bank committee meetings (FOMC, BoE MPC, ECB GovC)
-    — these are published once a year; refresh the *_SCHEDULE constants
-    around December for the next year.
-  * Pattern-based monthly releases (BLS NFP, US/UK CPI, etc.) — computed
-    dynamically from "first Friday of month at 8:30 ET" type rules.
+Sources, in preference order:
+  1. **Fed FOMC**     — scraped live from federalreserve.gov (works back +
+                        forward; falls back to the hardcoded list below).
+  2. **BoE MPC, ECB** — hardcoded constants. Best-effort scrape attempted
+                        but the BoE/ECB calendar pages are JS-rendered, so
+                        the lists below are the source of truth. **Refresh
+                        the *_HARDCODED constants once a year, in December**,
+                        to add the next year's dates.
+  3. **Monthly patterns** — BLS NFP, US/UK CPI, etc. — fully computed each
+                        run from "first Friday of month at 8:30 ET" style
+                        rules. Self-extending forever.
 
 Outputs ISO-8601 datetimes in UTC. The frontend handles localisation.
 """
@@ -16,9 +21,12 @@ from __future__ import annotations
 import calendar as _cal
 import json
 import logging
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+import requests
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -33,36 +41,103 @@ ET  = ZoneInfo("America/New_York")
 UK  = ZoneInfo("Europe/London")
 CET = ZoneInfo("Europe/Berlin")
 
-LOOKAHEAD_DAYS = 180
+LOOKAHEAD_DAYS = 365
+HEADERS = {"User-Agent": "Mozilla/5.0 MacroOps/1.0"}
 
 # ─── Central-bank committee schedules ──────────────────────────────────
 # Refresh annually. Source links commented per row.
 
-FOMC_SCHEDULE = [
-    # 2026 — federalreserve.gov/monetarypolicy/fomccalendars.htm
+FOMC_HARDCODED = [
+    # Fallback list — used only if the live scrape fails.
+    # Refresh annually if you ever turn the scraper off.
     "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-10",
     "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09",
-    # 2027 (provisional)
     "2027-01-27", "2027-03-17", "2027-04-28", "2027-06-09",
     "2027-07-28", "2027-09-22", "2027-11-03", "2027-12-15",
 ]
 FOMC_TIME_ET = time(14, 0)        # Statement at 2 PM ET
 
-BOE_MPC_SCHEDULE = [
-    # 2026 — bankofengland.co.uk/monetary-policy/decisions-and-minutes
+
+# ── Fed FOMC scraper ────────────────────────────────────────────────────
+# The Fed's calendar page lists every meeting with the day-range inline
+# (e.g. "26-27" inside a div with class "fomc-meeting__date"). We parse
+# the year panel headers + each meeting row to extract exact dates.
+_FOMC_YEAR_PANEL_RE = re.compile(r'id="(\d+)">(\d{4})\s*FOMC\s*Meetings', re.I)
+_FOMC_MONTH_RE      = re.compile(r'fomc-meeting__month[^>]*>\s*<strong>([A-Za-z]+)', re.I)
+_FOMC_DATE_RE       = re.compile(r'fomc-meeting__date[^>]*>\s*([\d\-/*\s]+)', re.I)
+_MONTH_NUM = {m: i for i, m in enumerate(
+    ['January','February','March','April','May','June','July','August',
+     'September','October','November','December'], start=1)}
+
+
+def scrape_fomc_dates() -> list[str]:
+    """Scrape federalreserve.gov for FOMC meeting ISO dates. Empty list on failure."""
+    try:
+        r = requests.get("https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+                         timeout=20, headers=HEADERS)
+        r.raise_for_status()
+        html = r.text
+    except requests.RequestException as e:
+        log.warning("FOMC scrape failed: %s", e)
+        return []
+
+    # Split into year panels, then within each find month+date pairs.
+    panels = re.split(r'<div class="panel panel-default">', html)
+    out: list[str] = []
+    for panel in panels:
+        ymatch = re.search(r'(\d{4})\s*FOMC\s*Meetings', panel)
+        if not ymatch:
+            continue
+        year = int(ymatch.group(1))
+        # Walk the panel sequentially pairing each month with its next date row
+        positions = []
+        for m in _FOMC_MONTH_RE.finditer(panel):
+            positions.append(("M", m.start(), m.group(1).strip().title()))
+        for m in _FOMC_DATE_RE.finditer(panel):
+            positions.append(("D", m.start(), m.group(1).strip()))
+        positions.sort(key=lambda p: p[1])
+
+        pending_month = None
+        for kind, _, val in positions:
+            if kind == "M":
+                pending_month = val
+            elif kind == "D" and pending_month:
+                mnum = _MONTH_NUM.get(pending_month)
+                if not mnum:
+                    pending_month = None
+                    continue
+                # date can be "26-27", "27", "26-27*" → take the last day
+                nums = re.findall(r'\d+', val)
+                if not nums:
+                    pending_month = None
+                    continue
+                day = int(nums[-1])
+                try:
+                    out.append(date(year, mnum, day).isoformat())
+                except ValueError:
+                    pass
+                pending_month = None
+
+    out = sorted(set(out))
+    log.info("scraped %d FOMC dates", len(out))
+    return out
+
+BOE_MPC_HARDCODED = [
+    # Source: bankofengland.co.uk/monetary-policy/decisions-and-minutes
+    # The BoE schedule page is JS-rendered, so a static scrape doesn't work
+    # cleanly. Refresh this list each December when the new year is announced.
     "2026-02-05", "2026-03-19", "2026-05-07", "2026-06-18",
     "2026-08-06", "2026-09-17", "2026-11-05", "2026-12-17",
-    # 2027 (provisional, monthly Thursday around the 5th/17th)
     "2027-02-04", "2027-03-18", "2027-05-06", "2027-06-17",
     "2027-08-05", "2027-09-16", "2027-11-04", "2027-12-16",
 ]
 BOE_TIME_UK = time(12, 0)         # Announcement at noon UK time
 
-ECB_SCHEDULE = [
-    # 2026 — ecb.europa.eu/press/calendars
+ECB_HARDCODED = [
+    # Source: ecb.europa.eu/press/calendars
+    # ECB publishes the next-year schedule in mid-year. Refresh annually.
     "2026-01-22", "2026-03-05", "2026-04-16", "2026-06-04",
     "2026-07-23", "2026-09-10", "2026-10-22", "2026-12-17",
-    # 2027
     "2027-01-21", "2027-03-04", "2027-04-22", "2027-06-03",
     "2027-07-22", "2027-09-09", "2027-10-21", "2027-12-16",
 ]
@@ -91,58 +166,59 @@ def to_utc(d: date, t: time, tz: ZoneInfo) -> datetime:
 
 
 # ─── Event builders ────────────────────────────────────────────────────
-def fomc_events() -> list[dict]:
+def _committee_events(dates: list[str], *, key: str, title: str, region: str,
+                      t: time, tz: ZoneInfo, description: str,
+                      source: str, source_url: str) -> list[dict]:
+    """Generic helper — turn ISO-date strings into event dicts."""
     out = []
-    for s in FOMC_SCHEDULE:
+    for s in dates:
         d = date.fromisoformat(s)
         out.append({
-            "id": f"fomc-{s}",
-            "key": "fomc",
-            "title": "FOMC Rate Decision",
-            "region": "US",
+            "id": f"{key}-{s}",
+            "key": key,
+            "title": title,
+            "region": region,
             "tag": "monetary",
-            "datetime": to_utc(d, FOMC_TIME_ET, ET).isoformat(),
-            "description": "Federal Open Market Committee policy decision, statement and (in Mar/Jun/Sep/Dec) Summary of Economic Projections.",
-            "source": "Federal Reserve",
-            "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+            "datetime": to_utc(d, t, tz).isoformat(),
+            "description": description,
+            "source": source,
+            "source_url": source_url,
         })
     return out
+
+
+def fomc_events() -> list[dict]:
+    """Scrape live; fall back to hardcoded if the scrape returns nothing."""
+    scraped = scrape_fomc_dates()
+    dates = scraped if scraped else FOMC_HARDCODED
+    log.info("FOMC source: %s (%d dates)", "live scrape" if scraped else "hardcoded fallback", len(dates))
+    return _committee_events(
+        dates, key="fomc", title="FOMC Rate Decision", region="US",
+        t=FOMC_TIME_ET, tz=ET,
+        description="Federal Open Market Committee policy decision, statement and (in Mar/Jun/Sep/Dec) Summary of Economic Projections.",
+        source="Federal Reserve",
+        source_url="https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+    )
 
 
 def boe_events() -> list[dict]:
-    out = []
-    for s in BOE_MPC_SCHEDULE:
-        d = date.fromisoformat(s)
-        out.append({
-            "id": f"boe-{s}",
-            "key": "boe_mpc",
-            "title": "BoE Monetary Policy Decision",
-            "region": "UK",
-            "tag": "monetary",
-            "datetime": to_utc(d, BOE_TIME_UK, UK).isoformat(),
-            "description": "Bank of England Monetary Policy Committee Bank Rate decision and minutes.",
-            "source": "Bank of England",
-            "source_url": "https://www.bankofengland.co.uk/monetary-policy/decisions-and-minutes",
-        })
-    return out
+    return _committee_events(
+        BOE_MPC_HARDCODED, key="boe_mpc", title="BoE Monetary Policy Decision",
+        region="UK", t=BOE_TIME_UK, tz=UK,
+        description="Bank of England Monetary Policy Committee Bank Rate decision and minutes.",
+        source="Bank of England",
+        source_url="https://www.bankofengland.co.uk/monetary-policy/decisions-and-minutes",
+    )
 
 
 def ecb_events() -> list[dict]:
-    out = []
-    for s in ECB_SCHEDULE:
-        d = date.fromisoformat(s)
-        out.append({
-            "id": f"ecb-{s}",
-            "key": "ecb_meeting",
-            "title": "ECB Rate Decision",
-            "region": "EU",
-            "tag": "monetary",
-            "datetime": to_utc(d, ECB_TIME_CET, CET).isoformat(),
-            "description": "European Central Bank Governing Council monetary policy decision and press conference.",
-            "source": "European Central Bank",
-            "source_url": "https://www.ecb.europa.eu/press/calendars/mgcgc/",
-        })
-    return out
+    return _committee_events(
+        ECB_HARDCODED, key="ecb_meeting", title="ECB Rate Decision",
+        region="EU", t=ECB_TIME_CET, tz=CET,
+        description="European Central Bank Governing Council monetary policy decision and press conference.",
+        source="European Central Bank",
+        source_url="https://www.ecb.europa.eu/press/calendars/mgcgc/",
+    )
 
 
 def monthly_pattern_events(today: date, months: int = 6) -> list[dict]:
@@ -334,7 +410,7 @@ def run() -> dict:
     all_events.extend(fomc_events())
     all_events.extend(boe_events())
     all_events.extend(ecb_events())
-    all_events.extend(monthly_pattern_events(today, months=6))
+    all_events.extend(monthly_pattern_events(today, months=12))
 
     # Filter to events between today and the horizon
     today_utc = datetime.combine(today, time(0, 0), tzinfo=UTC)

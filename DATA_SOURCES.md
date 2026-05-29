@@ -2,6 +2,26 @@
 
 Every piece of data this dashboard shows, where it comes from, how it's pulled, and how reliable that pipeline is.
 
+## What auto-updates vs what needs a hand once a year
+
+| Category | Behaviour | Touched by GitHub Actions? |
+|---|---|---|
+| **All series data** (FRED, Yahoo, UK fuel, Land Registry HPI) | Self-updating every 6h | ✅ Yes |
+| **Live newswire** | Self-updating hourly | ✅ Yes |
+| **Live crypto + index tiles** | Browser fetches every 20s — no server work | ✅ Always live |
+| **Hero TradingView chart** | TradingView's own live feed inside an iframe | ✅ Always live |
+| **Monthly release calendar** (NFP, CPI, PCE, UK Labour, EU CPI, fuel survey) | **Self-extending forever** — computed from "first Friday of month at 8:30 ET" type rules | ✅ Yes |
+| **FOMC meeting dates** | **Scraped live from federalreserve.gov on every refresh.** New years appear automatically. | ✅ Yes — scrape |
+| **BoE MPC meeting dates** | Hardcoded list in `scripts/fetch_calendar.py` (BoE page is JS-rendered, no easy scrape). | ⚠️ Refresh annually each December |
+| **ECB GovC meeting dates** | Hardcoded list in `scripts/fetch_calendar.py`. | ⚠️ Refresh annually each December |
+| **Historical events** (1971-2025) | Hand-curated in `scripts/series_config.py` — historical, doesn't change. | n/a |
+| **Education / Learn content** | Hand-curated in `data/education.json` — static content. | n/a |
+| **TradingView symbol mappings** | Hardcoded in `assets/js/hero.js`. Changes only when TradingView retires a feed. | n/a |
+
+**TL;DR:** The only thing requiring annual maintenance is two lists of ~8 dates each — BoE MPC and ECB GovC. The fix is roughly 1 minute each in December. Everything else is fully self-updating in perpetuity.
+
+---
+
 There are **seven distinct delivery mechanisms** in play:
 
 | # | Mechanism | Used for | Lives in |

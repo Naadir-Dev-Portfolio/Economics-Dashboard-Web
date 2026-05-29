@@ -21,6 +21,8 @@
     tradingview:  { status: 'pending', last_ok: null },
   };
   let healthData = null;
+  // Preserve which rows the user has expanded across the 60s re-renders.
+  const expandedIds = new Set();
 
   function init(health) {
     healthData = health || { sources: [] };
@@ -71,9 +73,14 @@
 
     const rowsHtml = sources.map(s => buildRow(s)).join('');
     wrap.innerHTML = headerHtml + `<div class="hc-rows">${rowsHtml}</div>`;
-    // Wire row clicks for expand/collapse
+    // Re-apply user-toggled expanded state (survives 60s re-render).
     wrap.querySelectorAll('.hc-row').forEach(row => {
-      row.addEventListener('click', () => row.classList.toggle('is-expanded'));
+      if (expandedIds.has(row.dataset.id)) row.classList.add('is-expanded');
+      row.addEventListener('click', () => {
+        const id = row.dataset.id;
+        if (expandedIds.has(id)) { expandedIds.delete(id); row.classList.remove('is-expanded'); }
+        else                     { expandedIds.add(id);    row.classList.add('is-expanded'); }
+      });
     });
   }
 
