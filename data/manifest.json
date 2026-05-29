@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-29T17:42:34+00:00",
-  "duration_sec": 28.3,
+  "generated_at": "2026-05-29T17:45:36+00:00",
+  "duration_sec": 66.7,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -17,8 +17,8 @@
       "blurb": "Sovereign borrowing costs. Bond markets price the future.",
       "file": "data/bonds.json",
       "series_count": 14,
-      "ok": 0,
-      "fail": 14
+      "ok": 14,
+      "fail": 0
     },
     "rates": {
       "title": "Central Bank Rates",
@@ -26,8 +26,8 @@
       "blurb": "The price of money set by central banks.",
       "file": "data/rates.json",
       "series_count": 9,
-      "ok": 0,
-      "fail": 9
+      "ok": 9,
+      "fail": 0
     },
     "inflation": {
       "title": "Inflation",
@@ -35,8 +35,8 @@
       "blurb": "Year-over-year change in consumer prices.",
       "file": "data/inflation.json",
       "series_count": 12,
-      "ok": 0,
-      "fail": 12
+      "ok": 12,
+      "fail": 0
     },
     "money": {
       "title": "Money & Liquidity",
@@ -44,8 +44,8 @@
       "blurb": "How much money is sloshing around the system.",
       "file": "data/money.json",
       "series_count": 10,
-      "ok": 0,
-      "fail": 10
+      "ok": 10,
+      "fail": 0
     },
     "housing": {
       "title": "Housing",
@@ -53,8 +53,8 @@
       "blurb": "Residential property \u2014 the household balance-sheet anchor.",
       "file": "data/housing.json",
       "series_count": 27,
-      "ok": 14,
-      "fail": 13
+      "ok": 27,
+      "fail": 0
     },
     "commodities": {
       "title": "Commodities",
@@ -62,8 +62,8 @@
       "blurb": "Raw materials \u2014 the real-economy temperature gauge.",
       "file": "data/commodities.json",
       "series_count": 16,
-      "ok": 14,
-      "fail": 2
+      "ok": 16,
+      "fail": 0
     },
     "fx": {
       "title": "Currencies",
@@ -80,8 +80,8 @@
       "blurb": "Jobs, unemployment, participation, age & gender splits.",
       "file": "data/employment.json",
       "series_count": 23,
-      "ok": 0,
-      "fail": 23
+      "ok": 23,
+      "fail": 0
     },
     "macro": {
       "title": "Growth & Output",
@@ -89,8 +89,8 @@
       "blurb": "GDP, industrial production, sentiment, leading indicators.",
       "file": "data/macro.json",
       "series_count": 12,
-      "ok": 0,
-      "fail": 12
+      "ok": 12,
+      "fail": 0
     },
     "risk": {
       "title": "Risk & Stress",
@@ -98,12 +98,12 @@
       "blurb": "Volatility, credit spreads, financial stress indicators.",
       "file": "data/risk.json",
       "series_count": 9,
-      "ok": 1,
-      "fail": 8
+      "ok": 9,
+      "fail": 0
     }
   },
   "totals": {
-    "ok": 59,
-    "fail": 103
+    "ok": 162,
+    "fail": 0
   }
 }

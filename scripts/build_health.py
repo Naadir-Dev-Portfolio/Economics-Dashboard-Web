@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(me
 log = logging.getLogger("health")
 
 
-# ─────────────────────────────────────────────────────────────────
+# ───────────────────────── helpers ─────────────────────────
 def load(name: str) -> dict | None:
     p = DATA / name
     if not p.exists():
@@ -46,10 +46,10 @@ def categorise(source_str: str) -> str:
     if not source_str:
         return "unknown"
     s = source_str.upper()
-    if "FRED" in s:                              return "fred"
-    if "YAHOO" in s:                             return "yahoo"
-    if "DESNZ" in s or "GOV.UK" in s:            return "uk_fuel"
-    if "LAND REGISTRY" in s:                     return "land_registry"
+    if "FRED" in s:                        return "fred"
+    if "YAHOO" in s:                       return "yahoo"
+    if "DESNZ" in s or "GOV.UK" in s:      return "uk_fuel"
+    if "LAND REGISTRY" in s:               return "land_registry"
     return "unknown"
 
 
@@ -68,9 +68,9 @@ def expected_by_method() -> dict[str, int]:
 def categorise_status(delivered: int, expected: int, age_hours: float | None,
                       stale_hours: float) -> str:
     """ok / warning / error from delivered ratio + age."""
-    if expected and delivered == 0:               return "error"
+    if expected and delivered == 0:                            return "error"
     ratio = (delivered / expected) if expected else 1.0
-    if ratio < 0.5:                               return "error"
+    if ratio < 0.5:                                            return "error"
     if age_hours is not None and age_hours > stale_hours * 3:  return "error"
     if ratio < 0.9 or (age_hours is not None and age_hours > stale_hours):
         return "warning"
@@ -89,183 +89,199 @@ def hours_since(iso: str | None) -> float | None:
     return (datetime.now(UTC) - dt).total_seconds() / 3600.0
 
 
-# ─────────────────────────────────────────────────────────────────
-def build() -> dict:
-    manifest = load("manifest.json") or {"sections": {}}
-    manifest_generated_at = manifest.get("generated_at")
-    fetch_age_h = hours_since(manifest_generated_at)
+# ───────────────────────── source declarations ─────────────────────────
+# Each entry is the static metadata; runtime counts/dates are filled in below.
+SERVER_SOURCES = [
+    {
+        "id": "fred", "name": "FRED",
+        "full_name": "Federal Reserve Economic Data (St. Louis Fed)",
+        "type": "Python · scripts/fetch_data.py",
+        "url": "https://fred.stlouisfed.org/",
+        "icon": "◭",
+        "method_key": "fred", "stale_hours": 18,
+        "notes": "Authenticated API. Requires FRED_API_KEY repo secret. Covers rates, inflation, money, employment, GDP, housing.",
+    },
+    {
+        "id": "yahoo", "name": "Yahoo Finance",
+        "full_name": "Yahoo Finance (yfinance library)",
+        "type": "Python · scripts/fetch_data.py",
+        "url": "https://finance.yahoo.com/",
+        "icon": "↗",
+        "method_key": "yahoo", "stale_hours": 18,
+        "notes": "No auth. yfinance scrapes Yahoo's internal API. Covers equity indices, commodities, FX, crypto.",
+    },
+    {
+        "id": "uk_fuel", "name": "UK Fuel (DESNZ)",
+        "full_name": "UK Department for Energy Security weekly road fuel prices",
+        "type": "Python · CSV scrape",
+        "url": "https://www.gov.uk/government/statistics/weekly-road-fuel-prices",
+        "icon": "◉",
+        "method_key": "uk_fuel", "stale_hours": 24,
+        "notes": "Weekly CSV. Scrapes the gov.uk landing page for the latest publication.",
+    },
+    {
+        "id": "land_registry", "name": "UK House Prices",
+        "full_name": "HM Land Registry UK House Price Index",
+        "type": "Python · CSV scrape",
+        "url": "https://landregistry.data.gov.uk/",
+        "icon": "⌂",
+        "method_key": "land_registry", "stale_hours": 36,
+        "notes": "Probes last 6 monthly CSV URLs to find the freshest. 405 regions parsed per fetch.",
+    },
+]
 
-    # Walk all section files to attribute series → method.
+# Sources that come from their own JSON file rather than series aggregation.
+FILE_SOURCES = [
+    {
+        "id": "news", "name": "News (RSS)",
+        "full_name": "RSS aggregator: BBC / Reuters / FT / BoE / ECB / Fed / Guardian",
+        "type": "Python · scripts/fetch_news.py",
+        "url": "",
+        "icon": "≡",
+        "file": "news.json",
+        "items_key": "items",
+        "expected": 200,
+        "stale_hours": 3,
+        "include_subsources": True,
+        "notes_fmt": "{alive}/{total} feeds responding. Hourly refresh in CI.",
+    },
+    {
+        "id": "calendar", "name": "Economic Calendar",
+        "full_name": "Computed release calendar (FOMC/BoE/ECB + monthly patterns)",
+        "type": "Python · scripts/fetch_calendar.py",
+        "url": "",
+        "icon": "▦",
+        "file": "calendar.json",
+        "items_key": "events",
+        "expected": 60,
+        "stale_hours": 36,
+        "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days.",
+    },
+]
+
+# Browser-side sources — status set client-side; declared here for the UI.
+RUNTIME_SOURCES = [
+    {
+        "id": "coingecko", "name": "CoinGecko (live)",
+        "full_name": "CoinGecko Simple Price API — realtime crypto",
+        "type": "Browser fetch · live-prices.js",
+        "url": "https://api.coingecko.com/",
+        "icon": "◆", "expected": 5,
+        "notes": "Polled every 20s by the browser. Provides BTC / ETH / SOL / XRP / ATOM live prices.",
+    },
+    {
+        "id": "yahoo_proxy", "name": "Yahoo Live (proxied)",
+        "full_name": "Yahoo Finance via public CORS proxy",
+        "type": "Browser fetch · live-prices.js",
+        "url": "https://query1.finance.yahoo.com/",
+        "icon": "↗", "expected": 7,
+        "notes": "Polled every 20s. Index/FX live quotes via corsproxy.io / allorigins.win fallback.",
+    },
+    {
+        "id": "tradingview", "name": "TradingView Widget",
+        "full_name": "TradingView embedded widget — hero chart",
+        "type": "Iframe · tradingview.com",
+        "url": "https://www.tradingview.com/",
+        "icon": "▶",
+        "notes": "Loads the live chart in the hero panel. Failure shows TradingView's own error.",
+    },
+]
+
+
+# ───────────────────────── builders ─────────────────────────
+def aggregate_by_method(manifest: dict) -> dict[str, dict]:
+    """Walk all section JSON files and bucket each series by source method."""
     by_method: dict[str, dict] = {}
     for section_key in manifest.get("sections", {}):
         section_data = load(f"{section_key}.json")
         if not section_data:
             continue
-        for sid, series in section_data.get("series", {}).items():
+        for series in section_data.get("series", {}).values():
             method = categorise(series.get("source", ""))
             slot = by_method.setdefault(method, {"count": 0, "latest_data": None})
             slot["count"] += 1
             last_date = (series.get("stats") or {}).get("last_date")
             if last_date and (slot["latest_data"] is None or last_date > slot["latest_data"]):
                 slot["latest_data"] = last_date
+    return by_method
 
+
+def build_server_source(spec: dict, by_method: dict, expected: dict,
+                        last_fetch: str | None, fetch_age_h: float | None) -> dict:
+    """Render a Python-fetched source (FRED / Yahoo / fuel / Land Registry)."""
+    bucket = by_method.get(spec["method_key"], {})
+    delivered = bucket.get("count", 0)
+    exp = expected.get(spec["method_key"], 0)
+    return {
+        **{k: spec[k] for k in ("id", "name", "full_name", "type", "url", "icon", "notes")},
+        "delivered": delivered,
+        "expected": exp,
+        "latest_data": bucket.get("latest_data"),
+        "last_fetch": last_fetch,
+        "status": categorise_status(delivered, exp, fetch_age_h, spec["stale_hours"]),
+    }
+
+
+def build_file_source(spec: dict) -> dict:
+    """Render a source that lives in its own JSON file (news, calendar)."""
+    data = load(spec["file"]) or {}
+    items = data.get(spec["items_key"]) or []
+    meta = data.get("meta") or {}
+    fetched_at = meta.get("generated_at")
+    age_h = hours_since(fetched_at)
+    out = {
+        **{k: spec[k] for k in ("id", "name", "full_name", "type", "url", "icon")},
+        "delivered": len(items),
+        "expected": spec["expected"],
+        "latest_data": (fetched_at or "")[:10] or None,
+        "last_fetch": fetched_at,
+        "status": categorise_status(len(items), spec["expected"], age_h, spec["stale_hours"]),
+    }
+    if spec.get("include_subsources"):
+        sub = meta.get("by_source") or {}
+        alive = sum(1 for v in sub.values() if v)
+        out["sub_sources"] = sub
+        out["notes"] = spec["notes_fmt"].format(alive=alive, total=len(sub))
+    else:
+        out["notes"] = spec["notes"]
+    return out
+
+
+def build_runtime_source(spec: dict) -> dict:
+    """Browser-side source — frontend overrides status at runtime."""
+    return {**spec, "runtime": True}
+
+
+def tally_status(sources: list[dict]) -> dict[str, int]:
+    counts = {"ok": 0, "warning": 0, "error": 0, "runtime": 0}
+    for s in sources:
+        if s.get("runtime"):
+            counts["runtime"] += 1
+        st = s.get("status")
+        if st in counts:
+            counts[st] += 1
+    counts["total"] = len(sources)
+    return counts
+
+
+# ───────────────────────── entrypoint ─────────────────────────
+def build() -> dict:
+    manifest = load("manifest.json") or {"sections": {}}
+    last_fetch = manifest.get("generated_at")
+    fetch_age_h = hours_since(last_fetch)
+
+    by_method = aggregate_by_method(manifest)
     expected = expected_by_method()
-    sources = []
 
-    # ── FRED ──
-    delivered = by_method.get("fred", {}).get("count", 0)
-    sources.append({
-        "id": "fred",
-        "name": "FRED",
-        "full_name": "Federal Reserve Economic Data (St. Louis Fed)",
-        "type": "Python · scripts/fetch_data.py",
-        "url": "https://fred.stlouisfed.org/",
-        "icon": "◭",
-        "delivered": delivered,
-        "expected": expected["fred"],
-        "latest_data": by_method.get("fred", {}).get("latest_data"),
-        "last_fetch": manifest_generated_at,
-        "status": categorise_status(delivered, expected["fred"], fetch_age_h, stale_hours=18),
-        "notes": "Authenticated API. Requires FRED_API_KEY repo secret. Covers rates, inflation, money, employment, GDP, housing.",
-    })
-
-    # ── Yahoo Finance ──
-    delivered = by_method.get("yahoo", {}).get("count", 0)
-    sources.append({
-        "id": "yahoo",
-        "name": "Yahoo Finance",
-        "full_name": "Yahoo Finance (yfinance library)",
-        "type": "Python · scripts/fetch_data.py",
-        "url": "https://finance.yahoo.com/",
-        "icon": "↗",
-        "delivered": delivered,
-        "expected": expected["yahoo"],
-        "latest_data": by_method.get("yahoo", {}).get("latest_data"),
-        "last_fetch": manifest_generated_at,
-        "status": categorise_status(delivered, expected["yahoo"], fetch_age_h, stale_hours=18),
-        "notes": "No auth. yfinance scrapes Yahoo's internal API. Covers equity indices, commodities, FX, crypto.",
-    })
-
-    # ── UK fuel (DESNZ) ──
-    delivered = by_method.get("uk_fuel", {}).get("count", 0)
-    sources.append({
-        "id": "uk_fuel",
-        "name": "UK Fuel (DESNZ)",
-        "full_name": "UK Department for Energy Security weekly road fuel prices",
-        "type": "Python · CSV scrape",
-        "url": "https://www.gov.uk/government/statistics/weekly-road-fuel-prices",
-        "icon": "◉",
-        "delivered": delivered,
-        "expected": expected["uk_fuel"],
-        "latest_data": by_method.get("uk_fuel", {}).get("latest_data"),
-        "last_fetch": manifest_generated_at,
-        "status": categorise_status(delivered, expected["uk_fuel"], fetch_age_h, stale_hours=24),
-        "notes": "Weekly CSV. Scrapes the gov.uk landing page for the latest publication.",
-    })
-
-    # ── Land Registry HPI ──
-    delivered = by_method.get("land_registry", {}).get("count", 0)
-    sources.append({
-        "id": "land_registry",
-        "name": "UK House Prices",
-        "full_name": "HM Land Registry UK House Price Index",
-        "type": "Python · CSV scrape",
-        "url": "https://landregistry.data.gov.uk/",
-        "icon": "⌂",
-        "delivered": delivered,
-        "expected": expected["land_registry"],
-        "latest_data": by_method.get("land_registry", {}).get("latest_data"),
-        "last_fetch": manifest_generated_at,
-        "status": categorise_status(delivered, expected["land_registry"], fetch_age_h, stale_hours=36),
-        "notes": "Probes last 6 monthly CSV URLs to find the freshest. 405 regions parsed per fetch.",
-    })
-
-    # ── News RSS ──
-    news = load("news.json") or {}
-    news_count = len((news.get("items") or []))
-    news_at = (news.get("meta") or {}).get("generated_at")
-    news_age = hours_since(news_at)
-    news_sources = (news.get("meta") or {}).get("by_source") or {}
-    news_alive = sum(1 for v in news_sources.values() if v)
-    sources.append({
-        "id": "news",
-        "name": "News (RSS)",
-        "full_name": "RSS aggregator: BBC / Reuters / FT / BoE / ECB / Fed / Guardian",
-        "type": "Python · scripts/fetch_news.py",
-        "url": "",
-        "icon": "≡",
-        "delivered": news_count,
-        "expected": 200,                                        # hard cap on items kept
-        "latest_data": (news_at or "")[:10] or None,
-        "last_fetch": news_at,
-        "status": categorise_status(news_count, 200, news_age, stale_hours=3),
-        "sub_sources": news_sources,
-        "notes": f"{news_alive}/{len(news_sources)} feeds responding. Hourly refresh in CI.",
-    })
-
-    # ── Calendar ──
-    cal = load("calendar.json") or {}
-    cal_count = len((cal.get("events") or []))
-    cal_at = (cal.get("meta") or {}).get("generated_at")
-    cal_age = hours_since(cal_at)
-    sources.append({
-        "id": "calendar",
-        "name": "Economic Calendar",
-        "full_name": "Computed release calendar (FOMC/BoE/ECB + monthly patterns)",
-        "type": "Python · scripts/fetch_calendar.py",
-        "url": "",
-        "icon": "▦",
-        "delivered": cal_count,
-        "expected": 60,
-        "latest_data": (cal_at or "")[:10] or None,
-        "last_fetch": cal_at,
-        "status": categorise_status(cal_count, 60, cal_age, stale_hours=36),
-        "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days.",
-    })
-
-    # ── Browser-side runtime sources (status set client-side; we just declare them) ──
-    sources.append({
-        "id": "coingecko",
-        "name": "CoinGecko (live)",
-        "full_name": "CoinGecko Simple Price API — realtime crypto",
-        "type": "Browser fetch · live-prices.js",
-        "url": "https://api.coingecko.com/",
-        "icon": "◆",
-        "runtime": True,
-        "expected": 5,
-        "notes": "Polled every 20s by the browser. Provides BTC / ETH / SOL / XRP / ATOM live prices.",
-    })
-    sources.append({
-        "id": "yahoo_proxy",
-        "name": "Yahoo Live (proxied)",
-        "full_name": "Yahoo Finance via public CORS proxy",
-        "type": "Browser fetch · live-prices.js",
-        "url": "https://query1.finance.yahoo.com/",
-        "icon": "↗",
-        "runtime": True,
-        "expected": 7,
-        "notes": "Polled every 20s. Index/FX live quotes via corsproxy.io / allorigins.win fallback.",
-    })
-    sources.append({
-        "id": "tradingview",
-        "name": "TradingView Widget",
-        "full_name": "TradingView embedded widget — hero chart",
-        "type": "Iframe · tradingview.com",
-        "url": "https://www.tradingview.com/",
-        "icon": "▶",
-        "runtime": True,
-        "notes": "Loads the live chart in the hero panel. Failure shows TradingView's own error.",
-    })
+    sources = (
+        [build_server_source(s, by_method, expected, last_fetch, fetch_age_h) for s in SERVER_SOURCES]
+        + [build_file_source(s) for s in FILE_SOURCES]
+        + [build_runtime_source(s) for s in RUNTIME_SOURCES]
+    )
 
     out = {
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "totals": {
-            "ok":      sum(1 for s in sources if s.get("status") == "ok"),
-            "warning": sum(1 for s in sources if s.get("status") == "warning"),
-            "error":   sum(1 for s in sources if s.get("status") == "error"),
-            "runtime": sum(1 for s in sources if s.get("runtime")),
-            "total":   len(sources),
-        },
+        "totals": tally_status(sources),
         "sources": sources,
     }
     (DATA / "health.json").write_text(
