@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-29T10:31:10+00:00",
-  "duration_sec": 14.9,
+  "generated_at": "2026-05-29T17:42:34+00:00",
+  "duration_sec": 28.3,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -77,11 +77,11 @@
     "employment": {
       "title": "Employment",
       "icon": "groups",
-      "blurb": "Jobs, unemployment, participation \u2014 the human ledger.",
+      "blurb": "Jobs, unemployment, participation, age & gender splits.",
       "file": "data/employment.json",
-      "series_count": 12,
+      "series_count": 23,
       "ok": 0,
-      "fail": 12
+      "fail": 23
     },
     "macro": {
       "title": "Growth & Output",
@@ -104,6 +104,6 @@
   },
   "totals": {
     "ok": 59,
-    "fail": 92
+    "fail": 103
   }
 }
