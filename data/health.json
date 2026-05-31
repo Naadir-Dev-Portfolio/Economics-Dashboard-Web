@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-30T23:51:57+00:00",
+  "generated_at": "2026-05-31T02:14:22+00:00",
   "totals": {
     "ok": 6,
     "warning": 0,
@@ -73,26 +73,26 @@
       "icon": "≡",
       "delivered": 200,
       "expected": 200,
-      "latest_data": "2026-05-30",
-      "last_fetch": "2026-05-30T23:51:52+00:00",
+      "latest_data": "2026-05-31",
+      "last_fetch": "2026-05-31T02:14:16+00:00",
       "status": "ok",
       "sub_sources": {
         "BBC Business": 52,
-        "BBC World": 26,
+        "BBC World": 27,
         "Guardian Biz": 34,
         "Guardian Econ": 20,
         "Yahoo Finance": 42,
-        "Reuters Biz": 24,
+        "Reuters Biz": 21,
         "Reuters World": 30,
         "AP Economy": 3,
-        "Bloomberg": 0,
+        "Bloomberg": 28,
         "Federal Reserve": 15,
         "Bank of England": 50,
         "ECB": 15,
         "CNBC Markets": 30,
         "MarketWatch": 10
       },
-      "notes": "13/14 feeds responding. Hourly refresh in CI."
+      "notes": "14/14 feeds responding. Hourly refresh in CI."
     },
     {
       "id": "calendar",
@@ -101,10 +101,10 @@
       "type": "Python · scripts/fetch_calendar.py",
       "url": "",
       "icon": "▦",
-      "delivered": 164,
+      "delivered": 165,
       "expected": 60,
-      "latest_data": "2026-05-30",
-      "last_fetch": "2026-05-30T23:51:57+00:00",
+      "latest_data": "2026-05-31",
+      "last_fetch": "2026-05-31T02:14:21+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
