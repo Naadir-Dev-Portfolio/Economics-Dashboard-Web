@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-06-05T17:38:14+00:00",
-  "duration_sec": 4.5,
+  "generated_at": "2026-06-05T17:42:42+00:00",
+  "duration_sec": 59.3,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -8,7 +8,7 @@
       "blurb": "Major global stock indices. The pulse of risk appetite.",
       "file": "data/markets.json",
       "series_count": 17,
-      "ok": 0,
+      "ok": 17,
       "fail": 0
     },
     "bonds": {
@@ -17,7 +17,7 @@
       "blurb": "Sovereign borrowing costs. Bond markets price the future.",
       "file": "data/bonds.json",
       "series_count": 14,
-      "ok": 0,
+      "ok": 14,
       "fail": 0
     },
     "rates": {
@@ -35,7 +35,7 @@
       "blurb": "Year-over-year change in consumer prices.",
       "file": "data/inflation.json",
       "series_count": 12,
-      "ok": 0,
+      "ok": 12,
       "fail": 0
     },
     "money": {
@@ -44,7 +44,7 @@
       "blurb": "How much money is sloshing around the system.",
       "file": "data/money.json",
       "series_count": 10,
-      "ok": 0,
+      "ok": 10,
       "fail": 0
     },
     "housing": {
@@ -53,7 +53,7 @@
       "blurb": "Residential property \u2014 the household balance-sheet anchor.",
       "file": "data/housing.json",
       "series_count": 27,
-      "ok": 0,
+      "ok": 27,
       "fail": 0
     },
     "commodities": {
@@ -62,7 +62,7 @@
       "blurb": "Raw materials \u2014 the real-economy temperature gauge.",
       "file": "data/commodities.json",
       "series_count": 16,
-      "ok": 0,
+      "ok": 16,
       "fail": 0
     },
     "fx": {
@@ -71,7 +71,7 @@
       "blurb": "Exchange rates and the dollar's grip on global liquidity.",
       "file": "data/fx.json",
       "series_count": 13,
-      "ok": 0,
+      "ok": 13,
       "fail": 0
     },
     "employment": {
@@ -80,7 +80,7 @@
       "blurb": "Jobs, unemployment, participation, age & gender splits.",
       "file": "data/employment.json",
       "series_count": 23,
-      "ok": 0,
+      "ok": 23,
       "fail": 0
     },
     "macro": {
@@ -89,7 +89,7 @@
       "blurb": "GDP, industrial production, sentiment, leading indicators.",
       "file": "data/macro.json",
       "series_count": 12,
-      "ok": 0,
+      "ok": 12,
       "fail": 0
     },
     "risk": {
@@ -98,12 +98,12 @@
       "blurb": "Volatility, credit spreads, financial stress indicators.",
       "file": "data/risk.json",
       "series_count": 9,
-      "ok": 0,
+      "ok": 9,
       "fail": 0
     }
   },
   "totals": {
-    "ok": 9,
+    "ok": 162,
     "fail": 0
   }
 }
