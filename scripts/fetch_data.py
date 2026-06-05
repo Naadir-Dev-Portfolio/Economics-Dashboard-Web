@@ -102,65 +102,170 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
 
 
 # ── Bank of England Bank Rate (the policy rate) ──
-# Scrapes the BoE's dedicated Bank Rate history page. We previously used
-# FRED's INTGSBGBM193N for this but that series is (a) actually a 20-year
+# We previously used FRED's INTGSBGBM193N which (a) was actually a 20-year
 # gilt yield, not the policy rate, and (b) stopped updating in mid-2025
-# when the IMF discontinued it. The BoE's own page is updated within
-# minutes of any MPC decision and has 258 change points back to 1975.
+# when the IMF discontinued it. So we now fetch from the BoE directly.
+#
+# RESILIENCE: three independent strategies, tried in order. Each can fail
+# without the dashboard going blank (we keep previous data via the
+# pipeline's preserve-on-failure logic):
+#
+#   1. Bank-Rate.asp strict scrape — fastest, exact regex with align=
+#   2. Bank-Rate.asp loose scrape  — same page, attribute-agnostic regex
+#                                    (survives a CSS/layout refresh as long
+#                                     as the table cells still exist)
+#   3. IADB CSV endpoint           — completely different URL/format,
+#                                    structured CSV (DATE,VALUE), daily
+#                                    granularity for IUDBEDR series
+#
+# Each result is validated: ≥10 observations, latest rate 0-25%, latest
+# observation within the last 24 months. Strategies that produce data
+# failing the sanity check are skipped rather than trusted.
 _BOE_MONTHS = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,
                'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12}
+_BOE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+_BOE_HTML_URL = "https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp"
+_BOE_CSV_URL  = ("https://www.bankofengland.co.uk/boeapps/iadb/"
+                 "fromshowcolumns.asp?csv.x=yes&Datefrom=01/Jan/1975&Dateto=now"
+                 "&SeriesCodes=IUDBEDR&UsingCodes=Y&CSVF=TN&VPD=Y&VFD=N")
 
-def fetch_boe_bank_rate() -> list[list]:
-    """Scrape the BoE Bank Rate (policy rate) and forward-fill to monthly.
+_boe_html_cache: dict[str, str] = {}
 
-    The BoE only publishes a row when the rate *changes* — so we read the
-    change-point table, then for each month from the earliest change to
-    today emit a synthetic point with the rate that was in force at the
-    *end* of that month. This keeps the chart dense enough to look like
-    every other monthly series.
-    """
-    url = "https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp"
+
+def _boe_fetch_html() -> str:
+    """Fetch the Bank-Rate.asp page once per process and cache it."""
+    if "html" not in _boe_html_cache:
+        try:
+            r = requests.get(_BOE_HTML_URL, timeout=30,
+                             headers={"User-Agent": _BOE_UA})
+            r.raise_for_status()
+            _boe_html_cache["html"] = r.text
+        except requests.RequestException as e:
+            log.warning("BoE Bank-Rate.asp fetch failed: %s", e)
+            _boe_html_cache["html"] = ""
+    return _boe_html_cache["html"]
+
+
+def _boe_parse_2digit_year(yy_or_yyyy: str) -> int | None:
+    """'25' → 2025, '95' → 1995, '2025' → 2025. Returns None if unparseable."""
     try:
-        r = requests.get(url, timeout=30,
-                         headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
-        r.raise_for_status()
-    except requests.RequestException as e:
-        log.warning("BoE Bank Rate scrape failed: %s", e)
-        return []
+        n = int(yy_or_yyyy)
+    except (TypeError, ValueError):
+        return None
+    if n < 100:
+        # Two-digit: <50 → 2000s, else 1900s. Handles 1950-2049 unambiguously,
+        # which covers every observation in BoE history (oldest table row is 1975).
+        return 2000 + n if n < 50 else 1900 + n
+    return n
 
-    import re as _re
-    from datetime import date as _date, timedelta as _td
 
-    pairs = _re.findall(
-        r'<td align="left">\s*(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{2})\s*</td>\s*'
-        r'<td align="right">\s*(\d+(?:\.\d+)?)\s*</td>',
-        r.text,
-    )
-    if not pairs:
-        log.warning("BoE Bank Rate scrape: no rows matched (page structure changed?)")
-        return []
-
-    # Parse change points. Two-digit year heuristic: < 50 → 2000s, else 1900s
-    # (handles 1950-2049, which covers everything the page ever publishes).
-    changes: list[tuple[_date, float]] = []
+def _boe_change_points_from_pairs(pairs: list[tuple]) -> list[tuple]:
+    """Turn (dd, mon, yy, rate) tuples into [(date, float), ...] sorted oldest first."""
+    from datetime import date as _date
+    out: list[tuple] = []
     for dd, mon, yy, rate in pairs:
         m = _BOE_MONTHS.get(mon)
         if not m:
             continue
-        y2 = int(yy)
-        year = 2000 + y2 if y2 < 50 else 1900 + y2
+        year = _boe_parse_2digit_year(yy)
+        if year is None:
+            continue
         try:
-            changes.append((_date(year, m, int(dd)), float(rate)))
+            out.append((_date(year, m, int(dd)), float(rate)))
         except (ValueError, TypeError):
             continue
-    changes.sort()
-    if not changes:
+    out.sort()
+    return out
+
+
+def _boe_strategy_strict_html() -> list[tuple]:
+    """Tightest pattern — `<td align="left">DATE</td><td align="right">RATE</td>`.
+    Fastest and most specific; first to try."""
+    html = _boe_fetch_html()
+    if not html:
+        return []
+    import re as _re
+    pairs = _re.findall(
+        r'<td align="left">\s*(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{2})\s*</td>\s*'
+        r'<td align="right">\s*(\d+(?:\.\d+)?)\s*</td>',
+        html,
+    )
+    return _boe_change_points_from_pairs(pairs)
+
+
+def _boe_strategy_loose_html() -> list[tuple]:
+    """Attribute-agnostic pattern — any pair of `<td>DATE</td>...<td>RATE</td>`.
+    Survives a CSS refresh that strips `align=` attributes or adds classes."""
+    html = _boe_fetch_html()
+    if not html:
+        return []
+    import re as _re
+    # Allow 2- or 4-digit year, any td attributes, optional whitespace
+    pairs = _re.findall(
+        r'<td[^>]*>\s*(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{2,4})\s*</td>'
+        r'\s*<td[^>]*>\s*(\d+(?:\.\d+)?)\s*</td>',
+        html,
+    )
+    return _boe_change_points_from_pairs(pairs)
+
+
+def _boe_strategy_iadb_csv() -> list[tuple]:
+    """Completely different endpoint: IADB CSV exporter for series IUDBEDR.
+    Returns daily values; we collapse to change points."""
+    try:
+        r = requests.get(_BOE_CSV_URL, timeout=30,
+                         headers={"User-Agent": _BOE_UA},
+                         allow_redirects=True)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        log.warning("BoE IADB CSV fetch failed: %s", e)
         return []
 
-    # Forward-fill monthly: for each month between the first change and
-    # today, emit a point whose value is the rate in force on the LAST day
-    # of that month. The timestamp we store is the FIRST of the month (the
-    # consistent convention used by every other monthly series here).
+    from datetime import date as _date
+    rows: list[tuple] = []
+    for line in r.text.splitlines():
+        line = line.strip()
+        if not line or line.upper().startswith("DATE"):
+            continue
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 2:
+            continue
+        try:
+            v = float(parts[1])
+        except ValueError:
+            continue
+        # CSV date format: "02 Jan 2024"
+        dparts = parts[0].split()
+        if len(dparts) != 3:
+            continue
+        m = _BOE_MONTHS.get(dparts[1])
+        if not m:
+            continue
+        year = _boe_parse_2digit_year(dparts[2])
+        if year is None:
+            continue
+        try:
+            rows.append((_date(year, m, int(dparts[0])), v))
+        except (ValueError, TypeError):
+            continue
+
+    rows.sort()
+    # Collapse daily series to change points only
+    changes: list[tuple] = []
+    last = None
+    for d, v in rows:
+        if v != last:
+            changes.append((d, v))
+            last = v
+    return changes
+
+
+def _boe_forward_fill_monthly(changes: list[tuple]) -> list[list]:
+    """Step-function forward-fill: emit one point per month from the earliest
+    change to today, with the value in force at the end of that month."""
+    if not changes:
+        return []
+    from datetime import date as _date, timedelta as _td
     out: list[list] = []
     first = changes[0][0]
     cursor = _date(first.year, first.month, 1)
@@ -178,9 +283,58 @@ def fetch_boe_bank_rate() -> list[list]:
         if current_rate is not None:
             out.append([_to_ms(cursor.isoformat()), current_rate])
         cursor = next_month
-
-    log.info("BoE Bank Rate: parsed %d change points → %d monthly observations", len(changes), len(out))
     return out
+
+
+def _boe_sanity_ok(monthly: list[list]) -> tuple[bool, str]:
+    """Reject obviously wrong outputs. Returns (ok, reason)."""
+    if not monthly:
+        return False, "no observations"
+    if len(monthly) < 10:
+        return False, f"only {len(monthly)} observations (need ≥10)"
+    last_ts, last_rate = monthly[-1]
+    if not (0 <= last_rate <= 25):
+        return False, f"latest rate {last_rate}% outside plausible 0-25 range"
+    from datetime import date as _date, datetime as _dt, timezone as _tz
+    last_date = _dt.fromtimestamp(last_ts / 1000, tz=_tz.utc).date()
+    age_days = (_date.today() - last_date).days
+    if age_days > 730:
+        return False, f"latest observation is {age_days} days old"
+    return True, ""
+
+
+def fetch_boe_bank_rate() -> list[list]:
+    """Resilient BoE Bank Rate fetcher. See module-top comments for design.
+
+    Tries three independent parsing strategies; first one that produces
+    sanity-passing data wins. All three would need to break before the
+    dashboard's BoE figure goes stale.
+    """
+    _boe_html_cache.clear()  # fresh fetch each call (idempotent within run)
+    strategies = (
+        ("strict-html", _boe_strategy_strict_html),
+        ("loose-html",  _boe_strategy_loose_html),
+        ("iadb-csv",    _boe_strategy_iadb_csv),
+    )
+    for name, fn in strategies:
+        try:
+            changes = fn()
+        except Exception as e:
+            log.warning("BoE strategy '%s' raised: %s", name, e)
+            continue
+        if not changes:
+            log.info("BoE strategy '%s' returned no data — trying next", name)
+            continue
+        monthly = _boe_forward_fill_monthly(changes)
+        ok, reason = _boe_sanity_ok(monthly)
+        if ok:
+            log.info("BoE Bank Rate: strategy '%s' → %d change points → %d monthly obs (current %.2f%%)",
+                     name, len(changes), len(monthly), monthly[-1][1])
+            return monthly
+        log.warning("BoE strategy '%s' parsed %d changes but failed sanity: %s",
+                    name, len(changes), reason)
+    log.error("All BoE Bank Rate strategies failed — keeping prior data if any.")
+    return []
 
 
 # ── ONS (Office for National Statistics) time series ──
