@@ -75,7 +75,7 @@ SECTIONS = {
         "blurb": "The price of money set by central banks.",
         "series": [
             {"id": "fed_funds",  "name": "US Fed Funds Rate",    "region": "US", "unit": "%", "fred": "FEDFUNDS",        "note": "FOMC policy target (monthly avg)."},
-            {"id": "boe_rate",   "name": "UK BoE Bank Rate",     "region": "UK", "unit": "%", "fred": "INTGSBGBM193N",   "note": "Bank of England policy rate."},
+            {"id": "boe_rate",   "name": "UK BoE Bank Rate",     "region": "UK", "unit": "%", "boe_scrape": True,         "note": "Bank of England policy rate, scraped from the BoE IADB Bank-Rate page. Updates within minutes of any MPC decision; 258 change points back to 1975."},
             {"id": "ecb_rate",   "name": "ECB Deposit Rate",     "region": "EU", "unit": "%", "fred": "ECBDFR",          "note": "Eurozone benchmark."},
             {"id": "boj_rate",   "name": "Japan Policy Rate",    "region": "JP", "unit": "%", "fred": "IRSTCB01JPM156N", "note": "Bank of Japan call rate."},
             {"id": "boc_rate",   "name": "Canada Overnight",     "region": "CA", "unit": "%", "fred": "IRSTCB01CAM156N"},

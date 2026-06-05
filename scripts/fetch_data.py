@@ -101,6 +101,88 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
     return out
 
 
+# ── Bank of England Bank Rate (the policy rate) ──
+# Scrapes the BoE's dedicated Bank Rate history page. We previously used
+# FRED's INTGSBGBM193N for this but that series is (a) actually a 20-year
+# gilt yield, not the policy rate, and (b) stopped updating in mid-2025
+# when the IMF discontinued it. The BoE's own page is updated within
+# minutes of any MPC decision and has 258 change points back to 1975.
+_BOE_MONTHS = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,
+               'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12}
+
+def fetch_boe_bank_rate() -> list[list]:
+    """Scrape the BoE Bank Rate (policy rate) and forward-fill to monthly.
+
+    The BoE only publishes a row when the rate *changes* — so we read the
+    change-point table, then for each month from the earliest change to
+    today emit a synthetic point with the rate that was in force at the
+    *end* of that month. This keeps the chart dense enough to look like
+    every other monthly series.
+    """
+    url = "https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp"
+    try:
+        r = requests.get(url, timeout=30,
+                         headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
+        r.raise_for_status()
+    except requests.RequestException as e:
+        log.warning("BoE Bank Rate scrape failed: %s", e)
+        return []
+
+    import re as _re
+    from datetime import date as _date, timedelta as _td
+
+    pairs = _re.findall(
+        r'<td align="left">\s*(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{2})\s*</td>\s*'
+        r'<td align="right">\s*(\d+(?:\.\d+)?)\s*</td>',
+        r.text,
+    )
+    if not pairs:
+        log.warning("BoE Bank Rate scrape: no rows matched (page structure changed?)")
+        return []
+
+    # Parse change points. Two-digit year heuristic: < 50 → 2000s, else 1900s
+    # (handles 1950-2049, which covers everything the page ever publishes).
+    changes: list[tuple[_date, float]] = []
+    for dd, mon, yy, rate in pairs:
+        m = _BOE_MONTHS.get(mon)
+        if not m:
+            continue
+        y2 = int(yy)
+        year = 2000 + y2 if y2 < 50 else 1900 + y2
+        try:
+            changes.append((_date(year, m, int(dd)), float(rate)))
+        except (ValueError, TypeError):
+            continue
+    changes.sort()
+    if not changes:
+        return []
+
+    # Forward-fill monthly: for each month between the first change and
+    # today, emit a point whose value is the rate in force on the LAST day
+    # of that month. The timestamp we store is the FIRST of the month (the
+    # consistent convention used by every other monthly series here).
+    out: list[list] = []
+    first = changes[0][0]
+    cursor = _date(first.year, first.month, 1)
+    today = _date.today()
+    change_idx = 0
+    current_rate: float | None = None
+    while cursor <= today:
+        next_month = (_date(cursor.year + 1, 1, 1)
+                      if cursor.month == 12
+                      else _date(cursor.year, cursor.month + 1, 1))
+        eom = next_month - _td(days=1)
+        while change_idx < len(changes) and changes[change_idx][0] <= eom:
+            current_rate = changes[change_idx][1]
+            change_idx += 1
+        if current_rate is not None:
+            out.append([_to_ms(cursor.isoformat()), current_rate])
+        cursor = next_month
+
+    log.info("BoE Bank Rate: parsed %d change points → %d monthly observations", len(changes), len(out))
+    return out
+
+
 # ── ONS (Office for National Statistics) time series ──
 # Direct ONS data is typically 3+ months fresher than the OECD-aggregated
 # equivalents on FRED. Pattern: ons.gov.uk/{topic_path}/timeseries/{id}/{dataset}/data
@@ -409,7 +491,13 @@ def fetch_one(s: dict) -> dict | None:
     data: list[list] = []
     source = None
 
-    if s.get("ons"):
+    if s.get("boe_scrape"):
+        log.info("  → %s via BoE Bank Rate scrape", sid)
+        data = fetch_boe_bank_rate()
+        if data:
+            source = "Bank of England — Bank Rate (IADB)"
+
+    if (not data) and s.get("ons"):
         log.info("  → %s via ONS (%s)", sid, s["ons"])
         data = fetch_ons(s["ons"], s.get("ons_dataset", "lms"), s.get("ons_path", "employmentandlabourmarket"))
         if data:
