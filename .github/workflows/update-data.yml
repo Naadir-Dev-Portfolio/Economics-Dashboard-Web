@@ -35,6 +35,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -91,7 +94,9 @@ jobs:
           else
             ts=$(date -u +"%Y-%m-%d %H:%MZ")
             git commit -m "chore(data): scheduled refresh ${ts} [${{ steps.mode.outputs.mode }}]"
-            # Pull rebase in case the other cron raced us
-            git pull --rebase --autostash origin main || true
-            git push
+            # Rebase in case main moved while this runner was fetching data.
+            # During rebase, "theirs" is this generated-data commit.
+            git fetch origin main
+            git rebase -X theirs origin/main
+            git push origin HEAD:main
           fi
