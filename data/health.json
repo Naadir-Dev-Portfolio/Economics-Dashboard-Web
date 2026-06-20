@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-20T18:04:23+00:00",
+  "generated_at": "2026-06-20T20:05:52+00:00",
   "totals": {
     "ok": 6,
     "warning": 0,
@@ -19,7 +19,7 @@
       "delivered": 100,
       "expected": 102,
       "latest_data": "2026-06-19",
-      "last_fetch": "2026-06-20T09:50:43+00:00",
+      "last_fetch": "2026-06-20T20:05:48+00:00",
       "status": "ok"
     },
     {
@@ -33,7 +33,7 @@
       "delivered": 43,
       "expected": 43,
       "latest_data": "2026-06-30",
-      "last_fetch": "2026-06-20T09:50:43+00:00",
+      "last_fetch": "2026-06-20T20:05:48+00:00",
       "status": "ok"
     },
     {
@@ -47,7 +47,7 @@
       "delivered": 2,
       "expected": 2,
       "latest_data": "2026-06-15",
-      "last_fetch": "2026-06-20T09:50:43+00:00",
+      "last_fetch": "2026-06-20T20:05:48+00:00",
       "status": "ok"
     },
     {
@@ -61,7 +61,7 @@
       "delivered": 14,
       "expected": 14,
       "latest_data": "2026-04-01",
-      "last_fetch": "2026-06-20T09:50:43+00:00",
+      "last_fetch": "2026-06-20T20:05:48+00:00",
       "status": "ok"
     },
     {
@@ -74,7 +74,7 @@
       "delivered": 200,
       "expected": 200,
       "latest_data": "2026-06-20",
-      "last_fetch": "2026-06-20T18:04:19+00:00",
+      "last_fetch": "2026-06-20T20:05:48+00:00",
       "status": "ok",
       "sub_sources": {
         "BBC Business": 56,
@@ -82,10 +82,10 @@
         "Guardian Biz": 39,
         "Guardian Econ": 20,
         "Yahoo Finance": 50,
-        "Reuters Biz": 29,
-        "Reuters World": 19,
+        "Reuters Biz": 25,
+        "Reuters World": 16,
         "AP Economy": 3,
-        "Bloomberg": 19,
+        "Bloomberg": 17,
         "Federal Reserve": 15,
         "Bank of England": 50,
         "ECB": 15,
@@ -104,7 +104,7 @@
       "delivered": 165,
       "expected": 60,
       "latest_data": "2026-06-20",
-      "last_fetch": "2026-06-20T18:04:23+00:00",
+      "last_fetch": "2026-06-20T20:05:51+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
