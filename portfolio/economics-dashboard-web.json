@@ -1,11 +1,11 @@
 {
   "section": "web",
-  "category": "live-websites",
+  "category": "independent-projects",
   "n": 1,
   "title": "Economics Dashboard Web",
   "img": "economics-dashboard-web.png",
   "imgFeatured": "economics-dashboard-web-featured.png",
-  "desc": "Interactive custome browser-based economics dashboard - live macro data, yield curves, housing, employment and inflation.",
+  "desc": "Interactive custom browser-based economics dashboard - live macro data, yield curves, housing, employment and inflation.",
   "demo": "https://naadir-dev-portfolio.github.io/Economics-Dashboard-Web/",
   "code": "https://github.com/Naadir-Dev-Portfolio/Economics-Dashboard-Web",
   "details": "https://github.com/Naadir-Dev-Portfolio/Economics-Dashboard-Web/blob/main/README.md",
