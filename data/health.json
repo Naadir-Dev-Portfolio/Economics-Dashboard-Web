@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-05T22:51:03+00:00",
+  "generated_at": "2026-07-05T23:55:26+00:00",
   "totals": {
     "ok": 6,
     "warning": 0,
@@ -74,7 +74,7 @@
       "delivered": 200,
       "expected": 200,
       "latest_data": "2026-07-05",
-      "last_fetch": "2026-07-05T22:50:59+00:00",
+      "last_fetch": "2026-07-05T23:55:22+00:00",
       "status": "ok",
       "sub_sources": {
         "BBC Business": 54,
@@ -82,10 +82,10 @@
         "Guardian Biz": 36,
         "Guardian Econ": 20,
         "Yahoo Finance": 50,
-        "Reuters Biz": 17,
-        "Reuters World": 16,
+        "Reuters Biz": 15,
+        "Reuters World": 15,
         "AP Economy": 0,
-        "Bloomberg": 22,
+        "Bloomberg": 24,
         "Federal Reserve": 15,
         "Bank of England": 50,
         "ECB": 15,
@@ -104,7 +104,7 @@
       "delivered": 165,
       "expected": 60,
       "latest_data": "2026-07-05",
-      "last_fetch": "2026-07-05T22:51:02+00:00",
+      "last_fetch": "2026-07-05T23:55:26+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
