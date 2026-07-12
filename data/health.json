@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-12T07:57:14+00:00",
+  "generated_at": "2026-07-12T08:39:54+00:00",
   "totals": {
     "ok": 6,
     "warning": 0,
@@ -19,7 +19,7 @@
       "delivered": 100,
       "expected": 102,
       "latest_data": "2026-07-10",
-      "last_fetch": "2026-07-11T19:43:11+00:00",
+      "last_fetch": "2026-07-12T08:39:50+00:00",
       "status": "ok"
     },
     {
@@ -33,7 +33,7 @@
       "delivered": 43,
       "expected": 43,
       "latest_data": "2026-07-31",
-      "last_fetch": "2026-07-11T19:43:11+00:00",
+      "last_fetch": "2026-07-12T08:39:50+00:00",
       "status": "ok"
     },
     {
@@ -47,7 +47,7 @@
       "delivered": 2,
       "expected": 2,
       "latest_data": "2026-07-06",
-      "last_fetch": "2026-07-11T19:43:11+00:00",
+      "last_fetch": "2026-07-12T08:39:50+00:00",
       "status": "ok"
     },
     {
@@ -61,7 +61,7 @@
       "delivered": 14,
       "expected": 14,
       "latest_data": "2026-04-01",
-      "last_fetch": "2026-07-11T19:43:11+00:00",
+      "last_fetch": "2026-07-12T08:39:50+00:00",
       "status": "ok"
     },
     {
@@ -74,16 +74,16 @@
       "delivered": 200,
       "expected": 200,
       "latest_data": "2026-07-12",
-      "last_fetch": "2026-07-12T07:57:10+00:00",
+      "last_fetch": "2026-07-12T08:39:51+00:00",
       "status": "ok",
       "sub_sources": {
         "BBC Business": 55,
         "BBC World": 31,
         "Guardian Biz": 40,
         "Guardian Econ": 20,
-        "Yahoo Finance": 40,
-        "Reuters Biz": 16,
-        "Reuters World": 26,
+        "Yahoo Finance": 43,
+        "Reuters Biz": 14,
+        "Reuters World": 27,
         "AP Economy": 2,
         "Bloomberg": 17,
         "Federal Reserve": 15,
@@ -104,7 +104,7 @@
       "delivered": 164,
       "expected": 60,
       "latest_data": "2026-07-12",
-      "last_fetch": "2026-07-12T07:57:14+00:00",
+      "last_fetch": "2026-07-12T08:39:54+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
