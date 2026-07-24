@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-24T19:57:01+00:00",
+  "generated_at": "2026-07-24T20:09:19+00:00",
   "totals": {
     "ok": 6,
     "warning": 0,
@@ -74,7 +74,7 @@
       "delivered": 200,
       "expected": 200,
       "latest_data": "2026-07-24",
-      "last_fetch": "2026-07-24T19:56:55+00:00",
+      "last_fetch": "2026-07-24T20:09:14+00:00",
       "status": "ok",
       "sub_sources": {
         "BBC Business": 46,
@@ -104,7 +104,7 @@
       "delivered": 165,
       "expected": 60,
       "latest_data": "2026-07-24",
-      "last_fetch": "2026-07-24T19:57:01+00:00",
+      "last_fetch": "2026-07-24T20:09:19+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
