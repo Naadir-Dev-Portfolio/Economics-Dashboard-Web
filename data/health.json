@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-26T08:06:11+00:00",
+  "generated_at": "2026-07-26T08:58:02+00:00",
   "totals": {
-    "ok": 4,
-    "warning": 2,
+    "ok": 6,
+    "warning": 0,
     "error": 0,
     "runtime": 3,
     "total": 9
@@ -19,8 +19,8 @@
       "delivered": 100,
       "expected": 102,
       "latest_data": "2026-07-24",
-      "last_fetch": "2026-07-25T08:31:18+00:00",
-      "status": "warning"
+      "last_fetch": "2026-07-26T08:57:58+00:00",
+      "status": "ok"
     },
     {
       "id": "yahoo",
@@ -33,8 +33,8 @@
       "delivered": 43,
       "expected": 43,
       "latest_data": "2026-07-31",
-      "last_fetch": "2026-07-25T08:31:18+00:00",
-      "status": "warning"
+      "last_fetch": "2026-07-26T08:57:58+00:00",
+      "status": "ok"
     },
     {
       "id": "uk_fuel",
@@ -47,7 +47,7 @@
       "delivered": 2,
       "expected": 2,
       "latest_data": "2026-07-20",
-      "last_fetch": "2026-07-25T08:31:18+00:00",
+      "last_fetch": "2026-07-26T08:57:58+00:00",
       "status": "ok"
     },
     {
@@ -61,7 +61,7 @@
       "delivered": 14,
       "expected": 14,
       "latest_data": "2026-05-01",
-      "last_fetch": "2026-07-25T08:31:18+00:00",
+      "last_fetch": "2026-07-26T08:57:58+00:00",
       "status": "ok"
     },
     {
@@ -74,18 +74,18 @@
       "delivered": 200,
       "expected": 200,
       "latest_data": "2026-07-26",
-      "last_fetch": "2026-07-26T08:06:05+00:00",
+      "last_fetch": "2026-07-26T08:57:58+00:00",
       "status": "ok",
       "sub_sources": {
-        "BBC Business": 45,
+        "BBC Business": 47,
         "BBC World": 25,
         "Guardian Biz": 40,
         "Guardian Econ": 20,
-        "Yahoo Finance": 41,
+        "Yahoo Finance": 42,
         "Reuters Biz": 25,
-        "Reuters World": 54,
+        "Reuters World": 56,
         "AP Economy": 1,
-        "Bloomberg": 13,
+        "Bloomberg": 11,
         "Federal Reserve": 15,
         "Bank of England": 50,
         "ECB": 15,
@@ -104,7 +104,7 @@
       "delivered": 165,
       "expected": 60,
       "latest_data": "2026-07-26",
-      "last_fetch": "2026-07-26T08:06:10+00:00",
+      "last_fetch": "2026-07-26T08:58:02+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
