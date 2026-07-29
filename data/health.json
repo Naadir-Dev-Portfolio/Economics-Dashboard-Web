@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T18:54:19+00:00",
+  "generated_at": "2026-07-29T19:54:02+00:00",
   "totals": {
     "ok": 6,
     "warning": 0,
@@ -18,8 +18,8 @@
       "notes": "Authenticated API. Requires FRED_API_KEY repo secret. Covers rates, inflation, money, employment, GDP, housing.",
       "delivered": 100,
       "expected": 102,
-      "latest_data": "2026-07-28",
-      "last_fetch": "2026-07-29T09:23:12+00:00",
+      "latest_data": "2026-07-29",
+      "last_fetch": "2026-07-29T19:53:56+00:00",
       "status": "ok"
     },
     {
@@ -33,7 +33,7 @@
       "delivered": 43,
       "expected": 43,
       "latest_data": "2026-07-31",
-      "last_fetch": "2026-07-29T09:23:12+00:00",
+      "last_fetch": "2026-07-29T19:53:56+00:00",
       "status": "ok"
     },
     {
@@ -47,7 +47,7 @@
       "delivered": 2,
       "expected": 2,
       "latest_data": "2026-07-27",
-      "last_fetch": "2026-07-29T09:23:12+00:00",
+      "last_fetch": "2026-07-29T19:53:56+00:00",
       "status": "ok"
     },
     {
@@ -61,7 +61,7 @@
       "delivered": 14,
       "expected": 14,
       "latest_data": "2026-05-01",
-      "last_fetch": "2026-07-29T09:23:12+00:00",
+      "last_fetch": "2026-07-29T19:53:56+00:00",
       "status": "ok"
     },
     {
@@ -74,16 +74,16 @@
       "delivered": 200,
       "expected": 200,
       "latest_data": "2026-07-29",
-      "last_fetch": "2026-07-29T18:54:13+00:00",
+      "last_fetch": "2026-07-29T19:53:56+00:00",
       "status": "ok",
       "sub_sources": {
-        "BBC Business": 47,
-        "BBC World": 27,
+        "BBC Business": 48,
+        "BBC World": 28,
         "Guardian Biz": 41,
         "Guardian Econ": 20,
-        "Yahoo Finance": 42,
+        "Yahoo Finance": 43,
         "Reuters Biz": 71,
-        "Reuters World": 65,
+        "Reuters World": 66,
         "AP Economy": 1,
         "Bloomberg": 54,
         "Federal Reserve": 15,
@@ -104,7 +104,7 @@
       "delivered": 165,
       "expected": 60,
       "latest_data": "2026-07-29",
-      "last_fetch": "2026-07-29T18:54:19+00:00",
+      "last_fetch": "2026-07-29T19:54:02+00:00",
       "status": "ok",
       "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days."
     },
