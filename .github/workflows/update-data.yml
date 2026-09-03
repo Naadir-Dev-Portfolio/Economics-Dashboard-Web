@@ -89,6 +89,8 @@ jobs:
         continue-on-error: true
 
       - name: Rebuild economic calendar
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python scripts/fetch_calendar.py
 
       - name: Rebuild data-source health snapshot

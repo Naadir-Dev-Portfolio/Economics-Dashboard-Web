@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 from urllib.parse import urlencode
 import json
 import logging
+import os
 import re
 
 from bs4 import BeautifulSoup
@@ -35,6 +36,7 @@ BLS_URL = 'https://www.bls.gov/schedule/news_release/bls.ics'
 BEA_URL = 'https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics'
 CENSUS_URL = 'https://www.census.gov/economic-indicators/calendar-listview.html'
 FRED_CALENDAR_URL = 'https://fred.stlouisfed.org/releases/calendar'
+FRED_RELEASE_URL = 'https://api.stlouisfed.org/fred/release/dates'
 
 
 def to_utc(day, clock, zone):
@@ -185,6 +187,30 @@ def fred_calendar_events(key):
     params = {'rid': FRED_RELEASES[key], 'vs': now.replace(day=1).date().isoformat(),
               've': (now + timedelta(days=LOOKAHEAD_DAYS)).date().isoformat()}
     url = FRED_CALENDAR_URL + '?' + urlencode(params)
+    api_key = os.environ.get('FRED_API_KEY', '').strip()
+    if api_key:
+        try:
+            response = get(FRED_RELEASE_URL, params={
+                'api_key': api_key, 'file_type': 'json', 'release_id': FRED_RELEASES[key],
+                'realtime_start': params['vs'], 'realtime_end': params['ve'],
+                'include_release_dates_with_no_data': 'true', 'sort_order': 'asc', 'limit': 1000,
+            }, timeout=20).json()
+            _, title, tag, _ = BLS_TYPES[key]
+            result = []
+            for row in response.get('release_dates', []):
+                if row.get('release_id') != FRED_RELEASES[key]:
+                    continue
+                day = datetime.strptime(row['date'], '%Y-%m-%d').date()
+                # These three BLS releases are published at 08:30 Eastern.
+                # The API supplies announced dates; no recurrence is inferred.
+                result.append(event(key, title, to_utc(day, time(8, 30), ET),
+                                    'US', 'BLS via FRED', url, tag=tag,
+                                    description=f'{title}. BLS release date from the Federal Reserve release API; scheduled for 08:30 Eastern.'))
+            if any(datetime.fromisoformat(e['datetime']) > now for e in result):
+                return result
+        except Exception as exc:
+            # Exception URLs can contain the credential, so log only the type.
+            log.info('%s: FRED release API unavailable (%s); checking public calendar', key, type(exc).__name__)
     return parse_fred_calendar(download_text(url), key, url)
 
 

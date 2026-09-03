@@ -62,7 +62,7 @@ Lookahead is at most 365 days, limited to published dates. No guessed first-Frid
 
 Named US, UK and European time zones handle daylight saving. Provisional dates stay provisional in the display and exports. Cached events retain their verification date.
 
-BLS returned HTTP 403 locally and on GitHub on 3 September 2026. The live Federal Reserve calendar provides the same published dates and times, labelled `BLS via FRED`. US Central time is converted with daylight-saving rules. If both official sources fail, only previously verified dates survive; `calendar_verified.json` supplies a last-resort checked September-December 2026 seed. Live feeds are retried on every run, and cached status and missing coverage remain visible. No dates are extrapolated.
+BLS returned HTTP 403 locally and on GitHub on 3 September 2026. The [Federal Reserve release-date API](https://fred.stlouisfed.org/docs/api/fred/release_dates.html) is the first fallback, with future published releases explicitly requested; its public calendar is the next fallback. These entries are labelled `BLS via FRED`. The API provides dates for the three 08:30 Eastern BLS releases; the website provides US Central times. Both use named time zones and daylight-saving rules. If all official sources fail, only previously verified dates survive; `calendar_verified.json` supplies a last-resort checked September-December 2026 seed. Live feeds are retried on every run, and cached status and missing coverage remain visible. No dates are extrapolated.
 
 BoE/ECB dates now update automatically. `refresh_committee_dates.py` is only a compatibility alias for the automatic fetcher.
 

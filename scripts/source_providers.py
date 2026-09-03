@@ -1,6 +1,8 @@
 """Structured official-source adapters used by the refresh pipeline."""
 import csv
 import io
+import logging
+import re
 from functools import lru_cache
 
 import requests
@@ -8,6 +10,16 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from data_quality import to_ms
+
+
+def redact_credentials(record):
+    # urllib3 retry warnings can include the full credential-bearing query URL.
+    record.msg = re.sub(r'([?&]api_key=)[^&\s\'"<>]+', r'\1[REDACTED]', record.getMessage())
+    record.args = ()
+    return True
+
+
+logging.getLogger('urllib3.connectionpool').addFilter(redact_credentials)
 
 SESSION = requests.Session()
 SESSION.headers.update({'User-Agent': 'Mozilla/5.0 MacroOps/2.0 (public economic data)'})

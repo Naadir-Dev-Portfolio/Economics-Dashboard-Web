@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 from pathlib import Path
 import sys
@@ -13,13 +14,20 @@ import build_health
 import fetch_calendar as calendar
 import fetch_data
 from data_quality import compute_stats, freshness, period_label, to_ms, validate_points, write_json, yoy
-from source_providers import sdmx_points
+from source_providers import redact_credentials, sdmx_points
 
 UTC = timezone.utc
 NOW = datetime(2026, 9, 3, tzinfo=UTC)
 
 
 class DataQualityTests(unittest.TestCase):
+    def test_retry_logs_redact_api_credentials(self):
+        record = logging.LogRecord('urllib3.connectionpool', logging.WARNING, __file__, 1,
+                                   'Retrying %s', ('https://api.stlouisfed.org/fred/release/dates?api_key=test-secret&file_type=json',), None)
+        redact_credentials(record)
+        self.assertNotIn('test-secret', record.getMessage())
+        self.assertIn('api_key=[REDACTED]&file_type=json', record.getMessage())
+
     def test_future_and_nonfinite_observations_are_rejected(self):
         for points in ([[to_ms('2026-09-30'), 70]], [[to_ms('2026-08-31'), math.nan]]):
             with self.assertRaises(ValueError):
@@ -190,6 +198,23 @@ class FetchTests(unittest.TestCase):
 
 
 class CalendarTests(unittest.TestCase):
+    def test_fred_release_api_requests_published_future_dates_without_exposing_key(self):
+        future = (datetime.now(UTC) + timedelta(days=30)).date().isoformat()
+        payload = {'release_dates': [{'release_id': 10, 'date': future}, {'release_id': 46, 'date': future}]}
+        with patch.dict('os.environ', {'FRED_API_KEY': 'test-secret'}), patch.object(calendar, 'get', return_value=Mock(json=lambda: payload)) as request, patch.object(calendar, 'download_text') as html:
+            events = calendar.fred_calendar_events('us_cpi')
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]['source'], 'BLS via FRED')
+        self.assertNotIn('test-secret', json.dumps(events))
+        self.assertEqual(request.call_args.kwargs['params']['include_release_dates_with_no_data'], 'true')
+        html.assert_not_called()
+
+    def test_fred_release_api_failure_falls_back_without_logging_credentials(self):
+        with patch.dict('os.environ', {'FRED_API_KEY': 'test-secret'}), patch.object(calendar, 'get', side_effect=ValueError('URL includes test-secret')), patch.object(calendar, 'download_text', return_value='html'), patch.object(calendar, 'parse_fred_calendar', return_value=[]) as parser, self.assertLogs('calendar', level='INFO') as logs:
+            self.assertEqual(calendar.fred_calendar_events('us_cpi'), [])
+        parser.assert_called_once()
+        self.assertNotIn('test-secret', ''.join(logs.output))
+
     def test_fred_calendar_fallback_preserves_source_timezone_and_identity(self):
         html = '''<table><tbody>
           <tr><td colspan="2">Friday September 11, 2026</td></tr>
