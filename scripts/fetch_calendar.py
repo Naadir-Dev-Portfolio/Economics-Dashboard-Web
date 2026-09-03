@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from urllib.parse import urlencode
 import json
 import logging
 import re
@@ -33,6 +34,7 @@ ONS_URL = 'https://www.ons.gov.uk/releasecalendar'
 BLS_URL = 'https://www.bls.gov/schedule/news_release/bls.ics'
 BEA_URL = 'https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics'
 CENSUS_URL = 'https://www.census.gov/economic-indicators/calendar-listview.html'
+FRED_CALENDAR_URL = 'https://fred.stlouisfed.org/releases/calendar'
 
 
 def to_utc(day, clock, zone):
@@ -145,29 +147,73 @@ BLS_TYPES = {
     'us_cpi': ('Consumer Price Index', 'US CPI Release', 'inflation', 'cpi'),
     'us_ppi': ('Producer Price Index', 'US PPI Release', 'inflation', 'ppi'),
 }
+FRED_RELEASES = {'us_nfp': 50, 'us_cpi': 10, 'us_ppi': 46}
+
+
+def parse_fred_calendar(html, key, url):
+    """FRED publishes source release dates in US Central time, not ingestion times."""
+    soup = BeautifulSoup(html, 'html.parser')
+    if 'All times are US Central Time.' not in soup.get_text(' ', strip=True):
+        raise ValueError('FRED calendar timezone could not be verified')
+    link = soup.select_one(f'a[href="/release?rid={FRED_RELEASES[key]}"]')
+    table = link.find_parent('table') if link else None
+    if table is None:
+        return []
+    _, title, tag, _ = BLS_TYPES[key]
+    result, day = [], None
+    for row in table.select('tbody tr'):
+        cells = row.select('td')
+        if len(cells) == 1:
+            day = None
+            try:
+                day = datetime.strptime(cells[0].get_text(' ', strip=True), '%A %B %d, %Y').date()
+            except ValueError:
+                continue
+        elif len(cells) == 2 and day and cells[1].select_one(f'a[href="/release?rid={FRED_RELEASES[key]}"]'):
+            try:
+                clock = datetime.strptime(cells[0].get_text(' ', strip=True), '%I:%M %p').time()
+            except ValueError:
+                continue
+            result.append(event(key, title, to_utc(day, clock, ZoneInfo('America/Chicago')),
+                                'US', 'BLS via FRED', url, tag=tag,
+                                description=f'{title}. Official BLS release schedule republished by the Federal Reserve.'))
+    return result
+
+
+def fred_calendar_events(key):
+    now = datetime.now(UTC)
+    params = {'rid': FRED_RELEASES[key], 'vs': now.replace(day=1).date().isoformat(),
+              've': (now + timedelta(days=LOOKAHEAD_DAYS)).date().isoformat()}
+    url = FRED_CALENDAR_URL + '?' + urlencode(params)
+    return parse_fred_calendar(download_text(url), key, url)
 
 
 def bls_events(key):
     needle, title, tag, path = BLS_TYPES[key]
     try:
         found = parse_ics(download_text(BLS_URL), key, [needle], title, 'BLS', BLS_URL, tag)
-        if found:
+        if any(datetime.fromisoformat(e['datetime']) > datetime.now(UTC) for e in found):
             return found
     except Exception:
         pass
     url = f'https://www.bls.gov/schedule/news_release/{path}.htm'
-    soup = BeautifulSoup(download_text(url), 'html.parser')
     result = []
-    for row in soup.select('tr'):
-        cells = row.select('td')
-        if len(cells) < 3:
-            continue
-        try:
-            when = parse_date(cells[1].get_text(' ', strip=True) + ' ' + cells[2].get_text(' ', strip=True)).replace(tzinfo=ET)
-            result.append(event(key, title, when, 'US', 'BLS', url, tag=tag))
-        except ValueError:
-            continue
-    return result
+    try:
+        soup = BeautifulSoup(download_text(url), 'html.parser')
+        for row in soup.select('tr'):
+            cells = row.select('td')
+            if len(cells) < 3:
+                continue
+            try:
+                when = parse_date(cells[1].get_text(' ', strip=True) + ' ' + cells[2].get_text(' ', strip=True)).replace(tzinfo=ET)
+                result.append(event(key, title, when, 'US', 'BLS', url, tag=tag))
+            except ValueError:
+                continue
+    except Exception as exc:
+        log.info('%s: direct BLS schedule unavailable (%s); checking FRED calendar', key, type(exc).__name__)
+    if any(datetime.fromisoformat(e['datetime']) > datetime.now(UTC) for e in result):
+        return result
+    return fred_calendar_events(key)
 
 
 ONS_TYPES = {
@@ -271,6 +317,7 @@ def run():
         selected = list(unique.values())
         events.extend(selected)
         reports[key] = {'status': status, 'source_url': url, 'count': len(selected),
+                        'providers': sorted({e['source'] for e in selected}),
                         'last_verified': max((e['verified_at'] for e in selected), default=None),
                         'through': max((e['datetime'][:10] for e in selected), default=None)}
         log.info('%s: %s, %s dates', key, status, len(selected))

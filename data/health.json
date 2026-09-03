@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-03T20:34:28+00:00",
+  "generated_at": "2026-09-03T20:37:27+00:00",
   "schema_version": 2,
   "totals": {
-    "ok": 10,
-    "warning": 1,
+    "ok": 11,
+    "warning": 0,
     "error": 0,
     "runtime": 3,
     "total": 14
@@ -196,30 +196,11 @@
       "type": "Scheduled calendar fetch",
       "url": "",
       "icon": "",
-      "status": "warning",
-      "delivered": 11,
+      "status": "ok",
+      "delivered": 14,
       "expected": 14,
-      "last_fetch": "2026-09-03T20:34:26+00:00",
-      "issues": [
-        {
-          "name": "us_nfp",
-          "reason": "verified cache",
-          "period": "2026-12-04",
-          "last_success": "2026-09-03T00:00:00+00:00"
-        },
-        {
-          "name": "us_cpi",
-          "reason": "verified cache",
-          "period": "2026-12-10",
-          "last_success": "2026-09-03T00:00:00+00:00"
-        },
-        {
-          "name": "us_ppi",
-          "reason": "verified cache",
-          "period": "2026-12-15",
-          "last_success": "2026-09-03T00:00:00+00:00"
-        }
-      ],
+      "last_fetch": "2026-09-03T20:36:54+00:00",
+      "issues": [],
       "notes": "Published dates only. Cached and provisional entries retain their verification status; unannounced dates are not estimated."
     },
     {

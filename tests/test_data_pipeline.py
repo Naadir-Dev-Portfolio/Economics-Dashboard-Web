@@ -190,6 +190,26 @@ class FetchTests(unittest.TestCase):
 
 
 class CalendarTests(unittest.TestCase):
+    def test_fred_calendar_fallback_preserves_source_timezone_and_identity(self):
+        html = '''<table><tbody>
+          <tr><td colspan="2">Friday September 11, 2026</td></tr>
+          <tr><td>7:30 am</td><td><a href="/release?rid=10">Consumer Price Index</a></td></tr>
+          <tr><td>8:00 am</td><td><a href="/release?rid=46">Producer Price Index</a></td></tr>
+          <tr><td colspan="2">Tuesday November 10, 2026</td></tr>
+          <tr><td>7:30 am</td><td><a href="/release?rid=10">Consumer Price Index</a></td></tr>
+        </tbody></table><p>All times are US Central Time.</p>'''
+        events = calendar.parse_fred_calendar(html, 'us_cpi', calendar.FRED_CALENDAR_URL)
+        self.assertEqual([e['datetime'] for e in events], ['2026-09-11T12:30:00+00:00', '2026-11-10T13:30:00+00:00'])
+        self.assertEqual(events[0]['source'], 'BLS via FRED')
+        with self.assertRaises(ValueError):
+            calendar.parse_fred_calendar(html.replace('US Central Time', 'unknown time'), 'us_cpi', calendar.FRED_CALENDAR_URL)
+
+    def test_blocked_bls_calendars_try_live_fred_before_stored_cache(self):
+        expected = [{'source': 'BLS via FRED'}]
+        with patch.object(calendar, 'download_text', side_effect=RuntimeError('blocked')), patch.object(calendar, 'fred_calendar_events', return_value=expected) as fallback:
+            self.assertEqual(calendar.bls_events('us_cpi'), expected)
+            fallback.assert_called_once_with('us_cpi')
+
     def test_boe_dst_and_provisional_dates(self):
         html = '<h2>2026 confirmed dates</h2><table><tr><td>Thursday 5 February</td></tr><tr><td>Thursday 6 August</td></tr></table><h2>2027 provisional dates</h2><table><tr><td>Thursday 4 February</td></tr></table>'
         events = calendar.parse_boe(html)

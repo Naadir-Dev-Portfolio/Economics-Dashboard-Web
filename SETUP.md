@@ -60,7 +60,7 @@ Routine annual BoE/ECB date edits are no longer required. Upstream schema change
 
 The data-frame and Yahoo client versions are pinned to the tested releases. Upgrade these deliberately and run the regression suite; scheduled refreshes must not silently pick up incompatible client changes.
 
-The BLS fallback verified on 3 September 2026 covers announced releases through December 2026. It is used only on source failure and must not be extrapolated. The source is retried automatically and health reporting exposes missing coverage.
+BLS calendars fall back to the Federal Reserve's live release calendar when direct BLS requests are blocked. Entries identify this as `BLS via FRED` and preserve the published time in US Central time. If both official endpoints fail, previously verified dates are retained and labelled cached. The last-resort seed verified on 3 September 2026 covers announced releases through December 2026; it is never extrapolated. Health reporting exposes missing coverage.
 
 Data Health and the Actions summary identify affected sources. Monthly/quarterly reporting lag is not the same as a stale pipeline. See [DATA_SOURCES.md](DATA_SOURCES.md).
 

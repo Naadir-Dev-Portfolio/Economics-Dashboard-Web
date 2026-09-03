@@ -53,7 +53,7 @@ Writes are atomic. `validate_data.py` checks artifacts before publication. Sourc
 | FOMC | [Federal Reserve](https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm) |
 | BoE MPC | [Bank of England](https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates) |
 | ECB | [Governing Council calendar](https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html) |
-| US payrolls/CPI/PPI | [BLS ICS](https://www.bls.gov/schedule/news_release/bls.ics), with individual release-page fallbacks |
+| US payrolls/CPI/PPI | [BLS ICS](https://www.bls.gov/schedule/news_release/bls.ics), individual release pages, then the [Federal Reserve release calendar](https://fred.stlouisfed.org/releases/calendar) |
 | US GDP/PCE | [BEA ICS](https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics) |
 | US retail | [Census calendar](https://www.census.gov/economic-indicators/calendar-listview.html) |
 | UK CPI/labour/GDP/retail/house prices | [ONS calendar](https://www.ons.gov.uk/releasecalendar) |
@@ -62,7 +62,7 @@ Lookahead is at most 365 days, limited to published dates. No guessed first-Frid
 
 Named US, UK and European time zones handle daylight saving. Provisional dates stay provisional in the display and exports. Cached events retain their verification date.
 
-On source failure, only previously verified dates survive. BLS returned HTTP 403 locally on 3 September 2026, so `calendar_verified.json` contains a checked September-December 2026 fallback. Live feeds are retried on every run; cached status and missing coverage are visible. This is not a perpetual substitute for a working feed.
+BLS returned HTTP 403 locally and on GitHub on 3 September 2026. The live Federal Reserve calendar provides the same published dates and times, labelled `BLS via FRED`. US Central time is converted with daylight-saving rules. If both official sources fail, only previously verified dates survive; `calendar_verified.json` supplies a last-resort checked September-December 2026 seed. Live feeds are retried on every run, and cached status and missing coverage remain visible. No dates are extrapolated.
 
 BoE/ECB dates now update automatically. `refresh_committee_dates.py` is only a compatibility alias for the automatic fetcher.
 
