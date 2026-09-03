@@ -58,6 +58,8 @@ GitHub documents that [GITHUB_TOKEN pushes do not trigger branch-based Pages bui
 
 Routine annual BoE/ECB date edits are no longer required. Upstream schema changes, discontinued datasets, persistent blocking, TradingView symbol changes, repository permissions and scheduling policies can still require attention.
 
+The data-frame and Yahoo client versions are pinned to the tested releases. Upgrade these deliberately and run the regression suite; scheduled refreshes must not silently pick up incompatible client changes.
+
 The BLS fallback verified on 3 September 2026 covers announced releases through December 2026. It is used only on source failure and must not be extrapolated. The source is retried automatically and health reporting exposes missing coverage.
 
 Data Health and the Actions summary identify affected sources. Monthly/quarterly reporting lag is not the same as a stale pipeline. See [DATA_SOURCES.md](DATA_SOURCES.md).

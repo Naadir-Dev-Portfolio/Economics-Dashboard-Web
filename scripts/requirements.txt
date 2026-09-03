@@ -1,7 +1,9 @@
-requests>=2.31.0
-pandas>=2.0.0
-yfinance>=0.2.40
-python-dateutil>=2.8.2
+requests>=2.31,<3
+# Match local and Actions data semantics; upgrade these alongside the regression tests.
+pandas==3.0.5
+yfinance==1.7.0
+curl_cffi==0.16.3
+python-dateutil>=2.8.2,<3
 beautifulsoup4>=4.12,<5
 icalendar>=6,<7
 tzdata>=2025.2

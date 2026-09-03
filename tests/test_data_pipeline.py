@@ -154,12 +154,28 @@ class FetchTests(unittest.TestCase):
         import pandas as pd
         history = pd.DataFrame({'Close': range(400)}, index=pd.date_range('2024-01-01', periods=400, tz='UTC'))
         observed = history.index[-1] + timedelta(days=1, hours=15)
-        instrument = Mock()
-        instrument.history.return_value = history
-        instrument.get_history_metadata.return_value = {'symbol': 'TEST', 'regularMarketTime': observed.timestamp(), 'exchangeTimezoneName': 'UTC', 'regularMarketPrice': 500}
-        with patch.dict(sys.modules, {'yfinance': Mock(Ticker=Mock(return_value=instrument))}):
-            points = fetch_data.fetch_yahoo('TEST')
-        self.assertEqual(points[-1], [to_ms(observed.date().isoformat()), 500])
+        for market_time in (observed.timestamp(), observed.tz_convert('Asia/Tokyo')):
+            with self.subTest(timestamp_type=type(market_time).__name__):
+                instrument = Mock()
+                instrument.history.return_value = history
+                instrument.get_history_metadata.return_value = {'symbol': 'TEST', 'regularMarketTime': market_time, 'exchangeTimezoneName': 'UTC', 'regularMarketPrice': 500}
+                with patch.dict(sys.modules, {'yfinance': Mock(Ticker=Mock(return_value=instrument))}):
+                    points = fetch_data.fetch_yahoo('TEST')
+                self.assertEqual(points[-1], [to_ms(observed.date().isoformat()), 500])
+
+    def test_yahoo_rejects_naive_future_and_mismatched_quotes(self):
+        import pandas as pd
+        history = pd.DataFrame({'Close': range(400)}, index=pd.date_range('2024-01-01', periods=400, tz='UTC'))
+        for symbol, market_time in [('TEST', datetime(2026, 9, 3)),
+                                    ('TEST', datetime.now(UTC) + timedelta(days=1)),
+                                    ('OTHER', datetime(2026, 9, 3, tzinfo=UTC))]:
+            with self.subTest(symbol=symbol, market_time=market_time):
+                instrument = Mock()
+                instrument.history.return_value = history
+                instrument.get_history_metadata.return_value = {'symbol': symbol, 'regularMarketTime': market_time, 'exchangeTimezoneName': 'UTC', 'regularMarketPrice': 500}
+                with patch.dict(sys.modules, {'yfinance': Mock(Ticker=Mock(return_value=instrument))}):
+                    points = fetch_data.fetch_yahoo('TEST')
+                self.assertEqual(len(points), 400)
 
     def test_health_does_not_count_stale_existing_series_as_delivered(self):
         config = {'test': {'series': [{'id': 'old', 'name': 'Old', 'fred': 'OLD'}, {'id': 'fresh', 'name': 'Fresh', 'fred': 'FRESH'}]}}

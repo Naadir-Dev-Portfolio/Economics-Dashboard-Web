@@ -331,7 +331,8 @@ def fetch_yahoo(ticker: str) -> list[list]:
 
     try:
         instrument = yf.Ticker(ticker)
-        df = instrument.history(period='max', interval='1d', auto_adjust=True, timeout=30, raise_errors=True)
+        yf.config.debug.hide_exceptions = False
+        df = instrument.history(period='max', interval='1d', auto_adjust=True, timeout=30)
     except Exception as e:  # network or yfinance internal
         log.warning("Yahoo %s failed: %s", ticker, e)
         return []
@@ -343,7 +344,7 @@ def fetch_yahoo(ticker: str) -> list[list]:
     # Refresh the overlapping daily tail, keeping provider revisions.
     try:
         import pandas as pd
-        recent = instrument.history(period='1mo', interval='1d', auto_adjust=True, timeout=30, raise_errors=True)
+        recent = instrument.history(period='1mo', interval='1d', auto_adjust=True, timeout=30)
         if recent is not None and not recent.empty:
             df = pd.concat([df, recent])
             df = df[~df.index.duplicated(keep='last')].sort_index()
@@ -374,7 +375,13 @@ def fetch_yahoo(ticker: str) -> list[list]:
         return []
     try:
         meta = instrument.get_history_metadata()
-        observed = datetime.fromtimestamp(meta['regularMarketTime'], timezone.utc)
+        market_time = meta['regularMarketTime']
+        if isinstance(market_time, datetime):
+            if market_time.tzinfo is None:
+                raise ValueError('Quote timestamp must have a timezone')
+            observed = market_time.astimezone(timezone.utc)
+        else:
+            observed = datetime.fromtimestamp(float(market_time), timezone.utc)
         trading_day = observed.astimezone(ZoneInfo(meta['exchangeTimezoneName'])).date()
         timestamp = _to_ms(trading_day.isoformat())
         price = float(meta['regularMarketPrice'])
@@ -452,7 +459,7 @@ def fetch_one(s: dict, previous: dict | None = None) -> dict | None:
             if previous and previous.get('schema_version') == SCHEMA_VERSION and previous.get('history_version', 1) == s.get('history_version', 1):
                 old = previous.get('data', [])
                 if old and data[-1][0] < old[-1][0]:
-                    raise ValueError('Provider returned an older endpoint than the stored data')
+                    raise ValueError(f'Provider endpoint {_date_str(data[-1][0])} is older than stored {_date_str(old[-1][0])}')
                 if old and data[0][0] > old[0][0] + 100 * 86400000 and len(data) < len(old) * 0.8:
                     raise ValueError('Provider truncated the stored history')
             frequency = meta.get('frequency') or s.get('freq') or frequency_of(data)
