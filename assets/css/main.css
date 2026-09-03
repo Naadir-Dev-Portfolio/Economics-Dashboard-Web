@@ -52,6 +52,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 
 html, body {
   background: var(--bg-0);
@@ -118,7 +119,7 @@ button { font-family: inherit; }
 
 /* ─── staleness banner — above the topbar when hand-curated date lists run low ─── */
 .stale-banner {
-  position: sticky; top: 0; z-index: 200;
+  position: relative; z-index: 2;
   display: flex; align-items: center; gap: 14px;
   padding: 10px 18px;
   background: linear-gradient(90deg, rgba(255,180,84,0.18), rgba(255,91,106,0.14));
@@ -795,7 +796,7 @@ button { font-family: inherit; }
   font-family: var(--ff-mono);
   font-size: 17px; font-weight: 600;
   color: var(--tx-0);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 .lt-unit { font-family: var(--ff-mono); font-size: 9px; color: var(--tx-3); letter-spacing: 0.08em; }
@@ -914,7 +915,7 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
   font-family: var(--ff-mono);
   font-size: 22px; font-weight: 600;
   color: var(--tx-0);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 .kpi-tile .kpi-unit {
   font-family: var(--ff-mono);
@@ -1011,7 +1012,7 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
   font-family: var(--ff-mono);
 }
 .hero-name { color: var(--tx-2); font-size: 11px; letter-spacing: 0.16em; }
-.hero-value { color: var(--tx-0); font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.hero-value { color: var(--tx-0); font-size: 22px; font-weight: 600; letter-spacing: 0; }
 .hero-change { font-size: 12px; }
 .hero-change.pos { color: var(--tx-0); }
 .hero-change.neg { color: var(--rd-0); }
@@ -1441,6 +1442,67 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
 @keyframes tooltipIn { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
 @media (hover: none) {
   .cat-blurb[data-tooltip]:hover::after { display: none; }
+}
+
+/* Observation-aware chart controls and source states. */
+.hero-panel, .cat-panel { min-width: 0; scroll-margin-top: calc(var(--topbar-h) + 12px); }
+.hero-head { flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.hero-meta { flex: 1 1 380px; min-width: 0; flex-wrap: wrap; gap: 10px; }
+.hero-symbol { width: min(100%, 340px); min-width: 0; letter-spacing: 0; }
+.hero-quote { flex: 1 1 210px; min-width: 0; flex-wrap: wrap; gap: 4px 12px; }
+.hero-name { flex-basis: 100%; font-size: 12px; letter-spacing: 0; overflow-wrap: anywhere; }
+.hero-value { font-size: 20px; letter-spacing: 0; }
+.hero-asof { font-size: 10px; color: var(--tx-2); }
+.hero-actions { flex-wrap: wrap; align-items: center; }
+.hero-btn { letter-spacing: 0; min-height: 32px; }
+.chart-modes, .chart-ranges { display: inline-flex; flex-shrink: 0; gap: 1px; }
+.chart-modes button, .chart-ranges button {
+  border: 1px solid var(--bd-2); background: var(--bg-2); color: var(--tx-2);
+  font: 11px var(--ff-mono); letter-spacing: 0; min-width: 34px; height: 32px;
+  padding: 0 8px; cursor: pointer; border-radius: 2px;
+}
+.chart-modes button.is-active, .chart-ranges button.is-active {
+  background: var(--rd-soft); border-color: var(--rd-line); color: var(--tx-0);
+}
+.chart-modes button:disabled { opacity: .35; cursor: not-allowed; }
+.hero-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 16px; border-bottom: 1px solid var(--bd-1); }
+.chart-dates { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--tx-3); font: 10px var(--ff-mono); }
+.chart-dates input { width: 128px; max-width: 100%; min-width: 0; height: 32px; border: 1px solid var(--bd-2); border-radius: 2px; color-scheme: dark; background: var(--bg-2); color: var(--tx-1); font: 11px var(--ff-mono); padding: 4px; }
+.chart-tools { display: flex; gap: 5px; margin-left: auto; }
+.icon-tool { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 6px; color: var(--tx-1); border: 1px solid var(--bd-2); background: var(--bg-2); border-radius: 2px; cursor: pointer; }
+.icon-tool svg { width: 16px; height: 16px; }
+.icon-tool:hover, .chart-ranges button:hover { border-color: var(--rd-line); color: var(--tx-0); }
+.hero-chart { min-height: 360px; height: 460px; }
+.hero-foot { flex-wrap: wrap; align-items: flex-start; }
+.hero-source { line-height: 1.6; overflow-wrap: anywhere; letter-spacing: 0; }
+.chart-empty { padding: 48px 20px; color: var(--tx-2); text-align: center; font: 13px var(--ff-sans); }
+.cat-ranges { margin: 8px 0 2px; }
+.cat-ranges button { height: 26px; font-size: 10px; }
+.cat-focus-chart { height: 220px; min-width: 0; }
+.cat-focus-source { line-height: 1.5; overflow-wrap: anywhere; letter-spacing: 0; }
+.is-warning { color: #e7b65c !important; }
+.kpi-asof { display: block; min-height: 26px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; letter-spacing: 0; }
+.kpi-row-vals, .cat-focus-stats { flex-wrap: wrap; }
+.lt-status { color: var(--tx-3); font: 9px var(--ff-mono); line-height: 1.5; min-height: 14px; letter-spacing: 0; }
+.hc-issues { margin-top: 8px; padding: 0; list-style: none; color: #e7b65c; overflow-wrap: anywhere; }
+.hc-issues li { padding: 4px 0; line-height: 1.5; }
+.hc-detail-line { flex-wrap: wrap; overflow-wrap: anywhere; }
+.calendar-status { padding: 8px 14px; border-bottom: 1px solid var(--bd-2); color: var(--tx-2); font: 11px var(--ff-sans); line-height: 1.5; }
+.calendar-status strong { color: #e7b65c; font-weight: 500; }
+.cal-row-source, .cm-evt-title { overflow-wrap: anywhere; }
+[role="button"]:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #d86b6b; outline-offset: 2px; }
+@media (max-width: 720px) {
+  .hero-meta { flex-basis: 100%; }
+  .hero-quote { flex-basis: auto; width: 100%; justify-content: flex-start; }
+  .hero-symbol { width: 100%; }
+  .hero-tools { padding: 8px 10px; gap: 8px; }
+  .chart-dates { order: 3; flex-basis: 100%; }
+  .chart-dates input { width: 132px; }
+  .hero-chart { height: 340px; min-height: 320px; }
+  .hero-foot { padding: 8px 10px; }
+  .cat-focus-chart { height: 210px; }
+  .live-head { flex-wrap: wrap; gap: 6px; }
+  .live-head-l { flex-wrap: wrap; gap: 6px; }
 }
 .cat-head-right { display: flex; gap: 6px; align-items: center; }
 .cat-tv, .cat-toggle, .cat-export {

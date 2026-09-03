@@ -1,449 +1,287 @@
+"""Published release dates only. Failed sources retain explicitly verified dates.
+
+Unannounced dates remain unknown. Cached and provisional entries retain their
+status and verification date, including in the browser and calendar exports.
 """
-Build data/calendar.json — economic events for the next ~12 months.
-
-Sources, in preference order:
-  1. **Fed FOMC**     — scraped live from federalreserve.gov (works back +
-                        forward; falls back to the hardcoded list below).
-  2. **BoE MPC, ECB** — hardcoded constants. Best-effort scrape attempted
-                        but the BoE/ECB calendar pages are JS-rendered, so
-                        the lists below are the source of truth. **Refresh
-                        the *_HARDCODED constants once a year, in December**,
-                        to add the next year's dates.
-  3. **Monthly patterns** — BLS NFP, US/UK CPI, etc. — fully computed each
-                        run from "first Friday of month at 8:30 ET" style
-                        rules. Self-extending forever.
-
-Outputs ISO-8601 datetimes in UTC. The frontend handles localisation.
-"""
-
-from __future__ import annotations
-
-import calendar as _cal
+from datetime import datetime, time, timedelta, timezone
+from functools import lru_cache
+from pathlib import Path
+from zoneinfo import ZoneInfo
 import json
 import logging
 import re
-from datetime import date, datetime, time, timedelta, timezone
-from pathlib import Path
-from zoneinfo import ZoneInfo
 
-import requests
+from bs4 import BeautifulSoup
+from dateutil.parser import parse as parse_date
+from icalendar import Calendar
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
-DATA_DIR = ROOT / "data"
-DATA_DIR.mkdir(exist_ok=True)
+from source_providers import get
+from data_quality import write_json
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
-log = logging.getLogger("calendar")
-
+ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = ROOT / 'data'
 UTC = timezone.utc
-ET  = ZoneInfo("America/New_York")
-UK  = ZoneInfo("Europe/London")
-CET = ZoneInfo("Europe/Berlin")
-
+ET, UK, CET = (ZoneInfo(z) for z in ('America/New_York', 'Europe/London', 'Europe/Berlin'))
 LOOKAHEAD_DAYS = 365
-HEADERS = {"User-Agent": "Mozilla/5.0 MacroOps/1.0"}
+logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
+log = logging.getLogger('calendar')
 
-# ─── Central-bank committee schedules ──────────────────────────────────
-# Refresh annually. Source links commented per row.
-
-FOMC_HARDCODED = [
-    # Fallback list — used only if the live scrape fails.
-    # Refresh annually if you ever turn the scraper off.
-    "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-10",
-    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09",
-    "2027-01-27", "2027-03-17", "2027-04-28", "2027-06-09",
-    "2027-07-28", "2027-09-22", "2027-11-03", "2027-12-15",
-]
-FOMC_TIME_ET = time(14, 0)        # Statement at 2 PM ET
+FOMC_URL = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
+BOE_URL = 'https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates'
+ECB_URL = 'https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html'
+ONS_URL = 'https://www.ons.gov.uk/releasecalendar'
+BLS_URL = 'https://www.bls.gov/schedule/news_release/bls.ics'
+BEA_URL = 'https://www.bea.gov/news/schedule/ics/online-calendar-subscription.ics'
+CENSUS_URL = 'https://www.census.gov/economic-indicators/calendar-listview.html'
 
 
-# ── Fed FOMC scraper ────────────────────────────────────────────────────
-# The Fed's calendar page lists every meeting with the day-range inline
-# (e.g. "26-27" inside a div with class "fomc-meeting__date"). We parse
-# the year panel headers + each meeting row to extract exact dates.
-_FOMC_YEAR_PANEL_RE = re.compile(r'id="(\d+)">(\d{4})\s*FOMC\s*Meetings', re.I)
-_FOMC_MONTH_RE      = re.compile(r'fomc-meeting__month[^>]*>\s*<strong>([A-Za-z]+)', re.I)
-_FOMC_DATE_RE       = re.compile(r'fomc-meeting__date[^>]*>\s*([\d\-/*\s]+)', re.I)
-_MONTH_NUM = {m: i for i, m in enumerate(
-    ['January','February','March','April','May','June','July','August',
-     'September','October','November','December'], start=1)}
+def to_utc(day, clock, zone):
+    return datetime.combine(day, clock, tzinfo=zone).astimezone(UTC)
 
 
-def scrape_fomc_dates() -> list[str]:
-    """Scrape federalreserve.gov for FOMC meeting ISO dates. Empty list on failure."""
-    try:
-        r = requests.get("https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
-                         timeout=20, headers=HEADERS)
-        r.raise_for_status()
-        html = r.text
-    except requests.RequestException as e:
-        log.warning("FOMC scrape failed: %s", e)
-        return []
-
-    # Split into year panels, then within each find month+date pairs.
-    panels = re.split(r'<div class="panel panel-default">', html)
-    out: list[str] = []
-    for panel in panels:
-        ymatch = re.search(r'(\d{4})\s*FOMC\s*Meetings', panel)
-        if not ymatch:
-            continue
-        year = int(ymatch.group(1))
-        # Walk the panel sequentially pairing each month with its next date row
-        positions = []
-        for m in _FOMC_MONTH_RE.finditer(panel):
-            positions.append(("M", m.start(), m.group(1).strip().title()))
-        for m in _FOMC_DATE_RE.finditer(panel):
-            positions.append(("D", m.start(), m.group(1).strip()))
-        positions.sort(key=lambda p: p[1])
-
-        pending_month = None
-        for kind, _, val in positions:
-            if kind == "M":
-                pending_month = val
-            elif kind == "D" and pending_month:
-                mnum = _MONTH_NUM.get(pending_month)
-                if not mnum:
-                    pending_month = None
-                    continue
-                # date can be "26-27", "27", "26-27*" → take the last day
-                nums = re.findall(r'\d+', val)
-                if not nums:
-                    pending_month = None
-                    continue
-                day = int(nums[-1])
-                try:
-                    out.append(date(year, mnum, day).isoformat())
-                except ValueError:
-                    pass
-                pending_month = None
-
-    out = sorted(set(out))
-    log.info("scraped %d FOMC dates", len(out))
-    return out
-
-BOE_MPC_HARDCODED = [
-    # Source: bankofengland.co.uk/monetary-policy/decisions-and-minutes
-    # The BoE schedule page is JS-rendered, so a static scrape doesn't work
-    # cleanly. Refresh this list each December when the new year is announced.
-    "2026-02-05", "2026-03-19", "2026-05-07", "2026-06-18",
-    "2026-08-06", "2026-09-17", "2026-11-05", "2026-12-17",
-    "2027-02-04", "2027-03-18", "2027-05-06", "2027-06-17",
-    "2027-08-05", "2027-09-16", "2027-11-04", "2027-12-16",
-]
-BOE_TIME_UK = time(12, 0)         # Announcement at noon UK time
-
-ECB_HARDCODED = [
-    # Source: ecb.europa.eu/press/calendars
-    # ECB publishes the next-year schedule in mid-year. Refresh annually.
-    "2026-01-22", "2026-03-05", "2026-04-16", "2026-06-04",
-    "2026-07-23", "2026-09-10", "2026-10-22", "2026-12-17",
-    "2027-01-21", "2027-03-04", "2027-04-22", "2027-06-03",
-    "2027-07-22", "2027-09-09", "2027-10-21", "2027-12-16",
-]
-ECB_TIME_CET = time(13, 15)       # Statement at 13:15 CET, presser 13:45 CET
-
-
-# ─── Helpers for the pattern-based monthly releases ────────────────────
-def nth_weekday_of_month(year: int, month: int, weekday: int, n: int) -> date:
-    """Return the n-th weekday (0=Mon, 6=Sun) of the given month."""
-    first = date(year, month, 1)
-    offset = (weekday - first.weekday()) % 7
-    return first + timedelta(days=offset + 7 * (n - 1))
-
-
-def last_business_day(year: int, month: int) -> date:
-    """Last business day (Mon-Fri) of the month."""
-    _, days = _cal.monthrange(year, month)
-    d = date(year, month, days)
-    while d.weekday() >= 5:
-        d -= timedelta(days=1)
-    return d
-
-
-def to_utc(d: date, t: time, tz: ZoneInfo) -> datetime:
-    return datetime.combine(d, t, tzinfo=tz).astimezone(UTC)
-
-
-# ─── Event builders ────────────────────────────────────────────────────
-def _committee_events(dates: list[str], *, key: str, title: str, region: str,
-                      t: time, tz: ZoneInfo, description: str,
-                      source: str, source_url: str) -> list[dict]:
-    """Generic helper — turn ISO-date strings into event dicts."""
-    out = []
-    for s in dates:
-        d = date.fromisoformat(s)
-        out.append({
-            "id": f"{key}-{s}",
-            "key": key,
-            "title": title,
-            "region": region,
-            "tag": "monetary",
-            "datetime": to_utc(d, t, tz).isoformat(),
-            "description": description,
-            "source": source,
-            "source_url": source_url,
-        })
-    return out
-
-
-def fomc_events() -> list[dict]:
-    """Scrape live; fall back to hardcoded if the scrape returns nothing."""
-    scraped = scrape_fomc_dates()
-    dates = scraped if scraped else FOMC_HARDCODED
-    log.info("FOMC source: %s (%d dates)", "live scrape" if scraped else "hardcoded fallback", len(dates))
-    return _committee_events(
-        dates, key="fomc", title="FOMC Rate Decision", region="US",
-        t=FOMC_TIME_ET, tz=ET,
-        description="Federal Open Market Committee policy decision, statement and (in Mar/Jun/Sep/Dec) Summary of Economic Projections.",
-        source="Federal Reserve",
-        source_url="https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
-    )
-
-
-def boe_events() -> list[dict]:
-    return _committee_events(
-        BOE_MPC_HARDCODED, key="boe_mpc", title="BoE Monetary Policy Decision",
-        region="UK", t=BOE_TIME_UK, tz=UK,
-        description="Bank of England Monetary Policy Committee Bank Rate decision and minutes.",
-        source="Bank of England",
-        source_url="https://www.bankofengland.co.uk/monetary-policy/decisions-and-minutes",
-    )
-
-
-def ecb_events() -> list[dict]:
-    return _committee_events(
-        ECB_HARDCODED, key="ecb_meeting", title="ECB Rate Decision",
-        region="EU", t=ECB_TIME_CET, tz=CET,
-        description="European Central Bank Governing Council monetary policy decision and press conference.",
-        source="European Central Bank",
-        source_url="https://www.ecb.europa.eu/press/calendars/mgcgc/",
-    )
-
-
-def monthly_pattern_events(today: date, months: int = 6) -> list[dict]:
-    """Generate forecast event dates from known monthly release patterns."""
-    out = []
-    for offset in range(months + 1):
-        year  = today.year + (today.month - 1 + offset) // 12
-        month = (today.month - 1 + offset) % 12 + 1
-
-        # ── US Non-Farm Payrolls — first Friday at 8:30 ET ──
-        d = nth_weekday_of_month(year, month, 4, 1)
-        out.append({
-            "id": f"us-nfp-{d.isoformat()}",
-            "key": "us_nfp",
-            "title": "US Non-Farm Payrolls",
-            "region": "US", "tag": "employment",
-            "datetime": to_utc(d, time(8, 30), ET).isoformat(),
-            "description": "Bureau of Labor Statistics — Employment Situation. Headline NFP, unemployment rate (U-3, U-6), wage growth, participation rate.",
-            "source": "BLS",
-            "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
-        })
-
-        # ── US CPI — typically Wednesday in 2nd full week, 8:30 ET ──
-        d = nth_weekday_of_month(year, month, 2, 2)  # 2nd Wednesday
-        out.append({
-            "id": f"us-cpi-{d.isoformat()}",
-            "key": "us_cpi",
-            "title": "US CPI Release",
-            "region": "US", "tag": "inflation",
-            "datetime": to_utc(d, time(8, 30), ET).isoformat(),
-            "description": "Bureau of Labor Statistics — Consumer Price Index (headline + core). Watched for inflation trajectory.",
-            "source": "BLS",
-            "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
-        })
-
-        # ── US PPI — usually Thursday after CPI ──
-        d_ppi = d + timedelta(days=1)
-        if d_ppi.weekday() >= 5:
-            d_ppi += timedelta(days=(7 - d_ppi.weekday()))
-        out.append({
-            "id": f"us-ppi-{d_ppi.isoformat()}",
-            "key": "us_ppi",
-            "title": "US PPI Release",
-            "region": "US", "tag": "inflation",
-            "datetime": to_utc(d_ppi, time(8, 30), ET).isoformat(),
-            "description": "BLS — Producer Price Index (final demand).",
-            "source": "BLS",
-            "source_url": "https://www.bls.gov/schedule/news_release/ppi.htm",
-        })
-
-        # ── US PCE — last business day +27 (~end of month following) at 8:30 ET ──
-        d_pce = nth_weekday_of_month(year, month, 4, 5) if nth_weekday_of_month(year, month, 4, 5).month == month else nth_weekday_of_month(year, month, 4, 4)
-        out.append({
-            "id": f"us-pce-{d_pce.isoformat()}",
-            "key": "us_pce",
-            "title": "US PCE Price Index",
-            "region": "US", "tag": "inflation",
-            "datetime": to_utc(d_pce, time(8, 30), ET).isoformat(),
-            "description": "BEA — Personal Consumption Expenditures price index (the Fed's preferred inflation gauge).",
-            "source": "BEA",
-            "source_url": "https://www.bea.gov/data/personal-consumption-expenditures-price-index",
-        })
-
-        # ── US Retail Sales — typically around the 15th, 8:30 ET ──
-        # Take the Tuesday/Wednesday closest to the 15th
-        target = date(year, month, 15)
-        while target.weekday() not in (1, 2):  # Tue/Wed
-            target += timedelta(days=1)
-        out.append({
-            "id": f"us-retail-{target.isoformat()}",
-            "key": "us_retail",
-            "title": "US Retail Sales",
-            "region": "US", "tag": "growth",
-            "datetime": to_utc(target, time(8, 30), ET).isoformat(),
-            "description": "Census Bureau — Advance Monthly Sales for Retail and Food Services.",
-            "source": "Census Bureau",
-            "source_url": "https://www.census.gov/retail/marts/www/marts_current.pdf",
-        })
-
-        # ── US M2 (H.6 release) — usually Tuesday around the 25th, 16:00 ET ──
-        target = date(year, month, 25)
-        while target.weekday() != 1:  # Tuesday
-            target += timedelta(days=1)
-        out.append({
-            "id": f"us-m2-{target.isoformat()}",
-            "key": "us_m2",
-            "title": "US Money Supply (H.6)",
-            "region": "US", "tag": "money",
-            "datetime": to_utc(target, time(16, 0), ET).isoformat(),
-            "description": "Federal Reserve H.6 release — M1, M2 money stock and components.",
-            "source": "Federal Reserve",
-            "source_url": "https://www.federalreserve.gov/releases/h6/",
-        })
-
-        # ── UK CPI — 3rd Wednesday of month at 07:00 BST ──
-        d = nth_weekday_of_month(year, month, 2, 3)
-        out.append({
-            "id": f"uk-cpi-{d.isoformat()}",
-            "key": "uk_cpi",
-            "title": "UK CPI Release",
-            "region": "UK", "tag": "inflation",
-            "datetime": to_utc(d, time(7, 0), UK).isoformat(),
-            "description": "Office for National Statistics — Consumer Prices Index, including CPIH and RPI.",
-            "source": "ONS",
-            "source_url": "https://www.ons.gov.uk/economy/inflationandpriceindices",
-        })
-
-        # ── UK Labour Market — usually Tuesday in 2nd full week at 07:00 ──
-        d = nth_weekday_of_month(year, month, 1, 2)  # 2nd Tuesday
-        out.append({
-            "id": f"uk-labour-{d.isoformat()}",
-            "key": "uk_labour",
-            "title": "UK Labour Market",
-            "region": "UK", "tag": "employment",
-            "datetime": to_utc(d, time(7, 0), UK).isoformat(),
-            "description": "ONS — Employment, unemployment, vacancies and wage growth.",
-            "source": "ONS",
-            "source_url": "https://www.ons.gov.uk/employmentandlabourmarket",
-        })
-
-        # ── UK GDP — monthly, ~6 weeks lag, around the 12th ──
-        target = date(year, month, 12)
-        if target.weekday() >= 5:
-            target += timedelta(days=(7 - target.weekday()))
-        out.append({
-            "id": f"uk-gdp-{target.isoformat()}",
-            "key": "uk_gdp",
-            "title": "UK Monthly GDP",
-            "region": "UK", "tag": "growth",
-            "datetime": to_utc(target, time(7, 0), UK).isoformat(),
-            "description": "ONS — Monthly UK GDP estimate (preliminary).",
-            "source": "ONS",
-            "source_url": "https://www.ons.gov.uk/economy/grossdomesticproductgdp",
-        })
-
-        # ── UK Retail Sales — usually Friday in 3rd/4th week, 07:00 ──
-        d = nth_weekday_of_month(year, month, 4, 3)  # 3rd Friday
-        out.append({
-            "id": f"uk-retail-{d.isoformat()}",
-            "key": "uk_retail",
-            "title": "UK Retail Sales",
-            "region": "UK", "tag": "growth",
-            "datetime": to_utc(d, time(7, 0), UK).isoformat(),
-            "description": "ONS — UK Retail Sales index.",
-            "source": "ONS",
-            "source_url": "https://www.ons.gov.uk/businessindustryandtrade/retailindustry",
-        })
-
-        # ── EU CPI Flash — last business day of month at 11:00 CET ──
-        d = last_business_day(year, month)
-        out.append({
-            "id": f"eu-cpi-{d.isoformat()}",
-            "key": "eu_cpi",
-            "title": "Eurozone CPI Flash",
-            "region": "EU", "tag": "inflation",
-            "datetime": to_utc(d, time(11, 0), CET).isoformat(),
-            "description": "Eurostat — Eurozone flash HICP estimate (preliminary).",
-            "source": "Eurostat",
-            "source_url": "https://ec.europa.eu/eurostat/web/hicp",
-        })
-
-    # Weekly DESNZ UK pump fuel survey — every Monday at ~10:00 UK time
-    d = today
-    for _ in range(60):  # ~14 weeks
-        d += timedelta(days=1)
-        if d.weekday() == 0:  # Monday
-            out.append({
-                "id": f"uk-fuel-{d.isoformat()}",
-                "key": "uk_fuel",
-                "title": "UK Weekly Road Fuel Prices",
-                "region": "UK", "tag": "energy",
-                "datetime": to_utc(d, time(10, 0), UK).isoformat(),
-                "description": "DESNZ — Weekly average UK pump prices for unleaded petrol and diesel.",
-                "source": "DESNZ",
-                "source_url": "https://www.gov.uk/government/statistics/weekly-road-fuel-prices",
-            })
-            if len({e["datetime"][:10] for e in out if e["key"] == "uk_fuel"}) > 12:
-                break
-
-    return out
-
-
-# ─── Main ───────────────────────────────────────────────────────────────
-def run() -> dict:
-    today = date.today()
-    horizon = today + timedelta(days=LOOKAHEAD_DAYS)
-
-    all_events = []
-    all_events.extend(fomc_events())
-    all_events.extend(boe_events())
-    all_events.extend(ecb_events())
-    all_events.extend(monthly_pattern_events(today, months=12))
-
-    # Filter to events between today and the horizon
-    today_utc = datetime.combine(today, time(0, 0), tzinfo=UTC)
-    end_utc = datetime.combine(horizon, time(23, 59), tzinfo=UTC)
-    filtered = []
-    seen_ids = set()
-    for e in all_events:
-        dt = datetime.fromisoformat(e["datetime"])
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC)
-        if dt < today_utc or dt > end_utc:
-            continue
-        if e["id"] in seen_ids:
-            continue
-        seen_ids.add(e["id"])
-        filtered.append(e)
-
-    filtered.sort(key=lambda e: e["datetime"])
-
-    payload = {
-        "meta": {
-            "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-            "lookahead_days": LOOKAHEAD_DAYS,
-            "count": len(filtered),
-        },
-        "events": filtered,
+def event(key, title, when, region, source, url, *, status='confirmed', tag='growth', description=''):
+    if when.tzinfo is None:
+        raise ValueError('Calendar event has no timezone')
+    when = when.astimezone(UTC)
+    return {
+        'id': f'{key}-{when.date()}', 'key': key, 'title': title,
+        'datetime': when.isoformat(), 'region': region, 'tag': tag,
+        'source': source, 'source_url': url, 'status': status,
+        'description': description or title,
+        'verified_at': datetime.now(UTC).isoformat(timespec='seconds'), 'verification': 'live',
     }
-    (DATA_DIR / "calendar.json").write_text(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-    )
-    log.info("wrote calendar.json — %d events through %s", len(filtered), horizon.isoformat())
+
+
+def parse_fomc(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    result = []
+    for panel in soup.select('.panel'):
+        heading = panel.select_one('.panel-heading')
+        year_match = re.search(r'(20\d{2})\s+FOMC Meetings', heading.get_text(' ', strip=True) if heading else '')
+        if not year_match:
+            continue
+        year = int(year_match[1])
+        for row in panel.select('.fomc-meeting'):
+            month_el, days_el = row.select_one('.fomc-meeting__month'), row.select_one('.fomc-meeting__date')
+            if not month_el or not days_el:
+                continue
+            months = month_el.get_text(' ', strip=True).split('/')
+            days = re.findall(r'\d+', days_el.get_text(' ', strip=True))
+            if not days:
+                continue
+            try:
+                day = parse_date(f'{months[-1]} {days[-1]} {year}').date()
+            except (ValueError, OverflowError):
+                continue
+            result.append(event('fomc', 'FOMC Rate Decision', to_utc(day, time(14), ET), 'US', 'Federal Reserve', FOMC_URL, tag='monetary'))
+    if 'each meeting date is tentative' in soup.get_text(' ', strip=True).lower():
+        future = sorted((e for e in result if datetime.fromisoformat(e['datetime']) > datetime.now(UTC)), key=lambda e: e['datetime'])
+        # The next meeting is confirmed at the preceding meeting; later dates
+        # remain tentative under the Fed's published scheduling policy.
+        for item in future[1:]:
+            item['status'] = 'provisional'
+    return result
+
+
+def parse_boe(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    result = []
+    for heading in soup.select('h2, h3'):
+        title = heading.get_text(' ', strip=True)
+        year = re.search(r'(20\d{2})\s+(?:confirmed|provisional)\s+dates', title, re.I)
+        if not year:
+            continue
+        table = heading.find_next('table')
+        if table is None:
+            continue
+        for row in table.select('tr'):
+            cells = row.select('td')
+            if not cells:
+                continue
+            try:
+                day = parse_date(f"{cells[0].get_text(' ', strip=True)} {year[1]}").date()
+            except ValueError:
+                continue
+            result.append(event('boe_mpc', 'BoE Monetary Policy Decision', to_utc(day, time(12), UK), 'UK', 'Bank of England', BOE_URL, tag='monetary', status='provisional' if 'provisional' in title.lower() else 'confirmed'))
+    return result
+
+
+def parse_ecb(html):
+    result = []
+    for term in BeautifulSoup(html, 'html.parser').select('main dt'):
+        detail = term.find_next_sibling('dd')
+        text = detail.get_text(' ', strip=True).lower() if detail else ''
+        if 'monetary policy meeting' not in text or 'day 2' not in text or 'non-monetary' in text:
+            continue
+        day = datetime.strptime(term.get_text(strip=True), '%d/%m/%Y').date()
+        result.append(event('ecb_meeting', 'ECB Rate Decision', to_utc(day, time(14, 15), CET), 'EU', 'European Central Bank', ECB_URL, tag='monetary'))
+    return result
+
+
+def parse_ics(content, key, needles, title, source, url, tag):
+    result = []
+    for component in Calendar.from_ical(content).walk('VEVENT'):
+        summary = str(component.get('SUMMARY', ''))
+        if not any(n.lower() in summary.lower() for n in needles):
+            continue
+        if str(component.get('STATUS', '')).upper() == 'CANCELLED' or not component.get('DTSTART'):
+            continue
+        when = component.decoded('DTSTART')
+        if not isinstance(when, datetime):
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=ET)
+        result.append(event(key, title, when, 'US', source, url, tag=tag, description=summary))
+    return result
+
+
+@lru_cache(maxsize=16)
+def download_text(url):
+    return get(url, timeout=30).text
+
+
+BLS_TYPES = {
+    'us_nfp': ('Employment Situation', 'US Non-Farm Payrolls', 'employment', 'empsit'),
+    'us_cpi': ('Consumer Price Index', 'US CPI Release', 'inflation', 'cpi'),
+    'us_ppi': ('Producer Price Index', 'US PPI Release', 'inflation', 'ppi'),
+}
+
+
+def bls_events(key):
+    needle, title, tag, path = BLS_TYPES[key]
+    try:
+        found = parse_ics(download_text(BLS_URL), key, [needle], title, 'BLS', BLS_URL, tag)
+        if found:
+            return found
+    except Exception:
+        pass
+    url = f'https://www.bls.gov/schedule/news_release/{path}.htm'
+    soup = BeautifulSoup(download_text(url), 'html.parser')
+    result = []
+    for row in soup.select('tr'):
+        cells = row.select('td')
+        if len(cells) < 3:
+            continue
+        try:
+            when = parse_date(cells[1].get_text(' ', strip=True) + ' ' + cells[2].get_text(' ', strip=True)).replace(tzinfo=ET)
+            result.append(event(key, title, when, 'US', 'BLS', url, tag=tag))
+        except ValueError:
+            continue
+    return result
+
+
+ONS_TYPES = {
+    'uk_cpi': (('consumer price inflation, uk:',), 'UK CPI Release', 'inflation'),
+    'uk_labour': (('uk labour market:', 'uk labour market '), 'UK Labour Market', 'employment'),
+    'uk_gdp': (('gdp monthly estimate, uk:',), 'UK Monthly GDP', 'growth'),
+    'uk_retail': (('retail sales, great britain:', 'retail sales; great britain:'), 'UK Retail Sales', 'growth'),
+    'uk_hpi': (('private rent and house prices, uk:', 'uk house price index:'), 'UK House Price Index', 'housing'),
+}
+
+
+def parse_ons_calendar(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    result = []
+    for link in soup.select('a[data-gtm-release-date]'):
+        title = link.get_text(' ', strip=True)
+        for key, (needles, name, tag) in ONS_TYPES.items():
+            if not any(needle in title.lower() for needle in needles):
+                continue
+            day = datetime.strptime(link['data-gtm-release-date'], '%Y%m%d').date()
+            clock = time.fromisoformat(link['data-gtm-release-time'])
+            result.append(event(key, name, to_utc(day, clock, UK), 'UK', 'ONS', 'https://www.ons.gov.uk' + link['href'], tag=tag, description=title))
+    return result
+
+
+@lru_cache(maxsize=1)
+def ons_events():
+    result = []
+    for page in range(1, 4):
+        # ONS currently labels its chronological order "date-newest".
+        url = f'{ONS_URL}?release-type=type-upcoming&sort=date-newest&limit=100&page={page}'
+        html = download_text(url)
+        result.extend(parse_ons_calendar(html))
+        if len(BeautifulSoup(html, 'html.parser').select('a[data-gtm-release-date]')) < 100:
+            break
+    return result
+
+
+def parse_census(html):
+    result = []
+    for row in BeautifulSoup(html, 'html.parser').select('tr'):
+        if 'Advance Monthly Sales for Retail and Food Services' not in row.get_text():
+            continue
+        date_cell = row.select_one('td[sorttable_customkey]')
+        if not date_cell:
+            continue
+        stamp = date_cell['sorttable_customkey']
+        if re.fullmatch(r'\d{12}', stamp):
+            when = datetime.strptime(stamp, '%Y%m%d%H%M').replace(tzinfo=ET)
+            result.append(event('us_retail', 'US Retail Sales', when, 'US', 'US Census Bureau', CENSUS_URL))
+    return result
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+
+
+def run():
+    now = datetime.now(UTC)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    horizon = now + timedelta(days=LOOKAHEAD_DAYS)
+    previous = read_json(DATA_DIR / 'calendar.json')
+    seed = read_json(ROOT / 'scripts/calendar_verified.json')
+    cached = previous.get('events', [])
+    for key, dates in seed.get('schedules', {}).items():
+        _, title, tag, path = BLS_TYPES[key]
+        for day in dates:
+            item = event(key, title, to_utc(datetime.fromisoformat(day).date(), time(8, 30), ET), 'US', 'BLS', f'https://www.bls.gov/schedule/news_release/{path}.htm', tag=tag)
+            item['verified_at'] = seed['verified_at']
+            cached.append(item)
+    sources = {
+        'fomc': (FOMC_URL, lambda: parse_fomc(download_text(FOMC_URL))),
+        'boe_mpc': (BOE_URL, lambda: parse_boe(download_text(BOE_URL))),
+        'ecb_meeting': (ECB_URL, lambda: parse_ecb(download_text(ECB_URL))),
+        **{key: (BLS_URL, lambda key=key: bls_events(key)) for key in BLS_TYPES},
+        **{key: (ONS_URL, lambda key=key: [e for e in ons_events() if e['key'] == key]) for key in ONS_TYPES},
+        'us_pce': (BEA_URL, lambda: parse_ics(download_text(BEA_URL), 'us_pce', ['Personal Income and Outlays'], 'US PCE Price Index', 'BEA', BEA_URL, 'inflation')),
+        'us_gdp': (BEA_URL, lambda: parse_ics(download_text(BEA_URL), 'us_gdp', ['GDP (Advance Estimate)', 'GDP (Second Estimate)', 'GDP (Third Estimate)'], 'US GDP Release', 'BEA', BEA_URL, 'growth')),
+        'us_retail': (CENSUS_URL, lambda: parse_census(download_text(CENSUS_URL))),
+    }
+    events, reports = [], {}
+    for key, (url, fetch) in sources.items():
+        status = 'ok'
+        try:
+            found = fetch()
+            if not any(datetime.fromisoformat(e['datetime']) > now for e in found):
+                raise ValueError('No upcoming published dates')
+        except Exception as exc:
+            log.warning('%s: %s; retaining only previously verified dates', key, type(exc).__name__)
+            found = [{**e, 'verification': 'cached'} for e in cached if e.get('key') == key and e.get('verified_at') and e.get('status') in ('confirmed', 'provisional')]
+            status = 'cached' if any(datetime.fromisoformat(e['datetime']) > now for e in found) else 'unavailable'
+        unique = {}
+        for e in found:
+            if start <= datetime.fromisoformat(e['datetime']) <= horizon:
+                old = unique.get(e['id'])
+                if not old or e['verified_at'] > old['verified_at']:
+                    unique[e['id']] = e
+        selected = list(unique.values())
+        events.extend(selected)
+        reports[key] = {'status': status, 'source_url': url, 'count': len(selected),
+                        'last_verified': max((e['verified_at'] for e in selected), default=None),
+                        'through': max((e['datetime'][:10] for e in selected), default=None)}
+        log.info('%s: %s, %s dates', key, status, len(selected))
+    events.sort(key=lambda e: e['datetime'])
+    payload = {'meta': {'generated_at': now.isoformat(timespec='seconds'), 'schema_version': 2,
+                        'lookahead_days': LOOKAHEAD_DAYS, 'count': len(events), 'sources': reports,
+                        'unconfirmed_keys': ['us_m2', 'uk_fuel', 'eu_cpi'],
+                        'policy': 'Published dates only; missing dates are not estimated.'}, 'events': events}
+    write_json(DATA_DIR / 'calendar.json', payload)
     return payload
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run()

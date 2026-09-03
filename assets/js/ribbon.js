@@ -35,21 +35,6 @@
     ['inflation',   'uk_cpi_yoy'],
   ];
 
-  // mapping into the hero's TradingView symbols (for clicks)
-  const TO_TV = {
-    sp500: 'FOREXCOM:SPX500', ftse100: 'FOREXCOM:UK100', dax: 'FOREXCOM:GRXEUR',
-    nikkei: 'FOREXCOM:JPXJPY', hangseng: 'FOREXCOM:HKG33', nasdaq: 'FOREXCOM:NSXUSD',
-    us_10y: 'TVC:US10Y', uk_10y: 'TVC:GB10Y', de_10y: 'TVC:DE10Y',
-    oil_brent: 'TVC:UKOIL', oil_wti: 'TVC:USOIL', gold: 'TVC:GOLD',
-    natgas: 'TVC:NATURALGAS', copper: 'CAPITALCOM:COPPER',
-    gbp_usd: 'FX:GBPUSD', eur_usd: 'FX:EURUSD', usd_jpy: 'FX:USDJPY',
-    dxy: 'TVC:DXY', btc_usd: 'BINANCE:BTCUSDT',
-    vix: 'TVC:VIX',
-    fed_funds: 'ECONOMICS:USINTR', boe_rate: 'ECONOMICS:GBINTR', ecb_rate: 'ECONOMICS:EUINTR',
-    us_cpi_yoy: 'ECONOMICS:USIRYY', uk_cpi_yoy: 'ECONOMICS:GBIRYY',
-    us_unrate: 'ECONOMICS:USURATE', uk_unrate: 'ECONOMICS:GBURATE',
-    us_m2: 'ECONOMICS:USM2',
-  };
 
   const sparklines = [];
   let paused = false;
@@ -85,11 +70,8 @@
       const handle = global.ChartKit.createSparkline(sp, series, { range: '1Y' });
       if (handle) sparklines.push(handle);
       tile.addEventListener('click', () => {
-        const sym = TO_TV[sid];
-        if (sym && global.Hero) {
-          const sel = document.getElementById('hero-symbol');
-          if (sel) sel.value = sym;
-          global.Hero.setSymbol(sym);
+        if (global.Hero) {
+          global.Hero.loadLocal(sec, sid, series);
           document.querySelector('.hero-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
@@ -114,18 +96,19 @@
 
     const stats = series.stats || {};
     const val = global.ChartKit.formatNumber(stats.last_value, series.unit);
-    const chg = stats.chg_1y_pct;
+    const { value: chg, unit: changeUnit } = global.ChartKit.annualChange(series);
     let chgHTML = '<span class="rt-chg zero">—</span>';
     if (chg != null) {
       const cls = chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'zero';
       const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '·';
-      chgHTML = `<span class="rt-chg ${cls}">${arrow} ${Math.abs(chg).toFixed(2)}%</span>`;
+      chgHTML = `<span class="rt-chg ${cls}">${arrow} ${Math.abs(chg).toFixed(2)} ${changeUnit}</span>`;
     }
     tile.innerHTML = `
       <div class="rt-name">${escapeHtml(series.name)}</div>
       <div class="rt-spark"></div>
       <div class="rt-vals"><span class="rt-val">${val}</span>${chgHTML}</div>
     `;
+    tile.title = global.ChartKit.sourceSummary(series);
     return tile;
   }
 

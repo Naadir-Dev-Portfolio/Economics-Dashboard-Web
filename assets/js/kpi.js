@@ -15,7 +15,7 @@
   // [sectionKey, seriesId, label, optional TradingView symbol, region badge,
   //  calendar event key for the countdown]
   const KPI_DEFS = [
-    ['rates',       'fed_funds',     'FED RATE',       'ECONOMICS:USINTR',  'US',     'fomc'],
+    ['rates',       'fed_funds',     'FED FUNDS',      'ECONOMICS:USINTR',  'US',     'fomc'],
     ['rates',       'boe_rate',      'BOE RATE',       'ECONOMICS:GBINTR',  'UK',     'boe_mpc'],
     ['rates',       'ecb_rate',      'ECB RATE',       'ECONOMICS:EUINTR',  'EU',     'ecb_meeting'],
     ['money',       'us_m2',         'US M2',          'ECONOMICS:USM2',    'US',     'us_m2'],
@@ -59,7 +59,7 @@
 
       const stats = series.stats || {};
       const val = global.ChartKit.formatNumber(stats.last_value, series.unit);
-      const chg = stats.chg_1y_pct;
+      const { value: chg, unit: changeUnit } = global.ChartKit.annualChange(series);
       let chgHTML;
       if (chg == null) {
         chgHTML = '<span class="kpi-change zero">——</span>';
@@ -67,10 +67,11 @@
         const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
         const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '·';
         const ngcls = chg < 0 ? 'neg' : '';
-        chgHTML = `<span class="kpi-change ${ngcls}"><span class="kpi-arrow ${cls}">${arrow}</span>${Math.abs(chg).toFixed(2)}% 1Y</span>`;
+        chgHTML = `<span class="kpi-change ${ngcls}"><span class="kpi-arrow ${cls}">${arrow}</span>${Math.abs(chg).toFixed(2)} ${changeUnit} 1Y</span>`;
       }
 
-      const asOf = formatAsOf(stats.last_date);
+      const asOf = global.ChartKit.observationLabel(series);
+      const warning = global.ChartKit.freshnessState(series);
       tile.innerHTML = `
         <div class="kpi-label">${label}<span class="kpi-region">${region}</span></div>
         <div class="kpi-row-vals">
@@ -78,7 +79,7 @@
           <span class="kpi-unit">${series.unit || ''}</span>
         </div>
         ${chgHTML}
-        ${asOf ? `<span class="kpi-asof" title="Latest observation in this series">as of ${asOf}</span>` : ''}
+        ${asOf ? `<span class="kpi-asof${warning ? ' is-warning' : ''}" title="${escapeHtml(global.ChartKit.sourceSummary(series))}">${escapeHtml(asOf)}${warning ? ' · ' + escapeHtml(warning) : ''}</span>` : ''}
         <div class="kpi-spark"></div>
         <div class="kpi-countdown" data-cal-key="${calKey || ''}">
           <span class="cd-label">NEXT</span>
@@ -87,28 +88,17 @@
       `;
       tile.title = series.note || series.name;
 
-      if (tvSymbol) {
-        tile.addEventListener('click', () => {
-          const sel = document.getElementById('hero-symbol');
-          if (sel) {
-            let opt = Array.from(sel.options).find(o => o.value === tvSymbol);
-            if (!opt) {
-              opt = document.createElement('option');
-              opt.value = tvSymbol;
-              opt.textContent = series.name;
-              sel.appendChild(opt);
-            }
-            sel.value = tvSymbol;
-          }
-          if (global.Hero) global.Hero.setSymbol(tvSymbol);
-          document.querySelector('.hero-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      } else {
-        tile.addEventListener('click', () => {
-          if (global.Hero) global.Hero.loadLocal(sec, sid, series);
-          document.querySelector('.hero-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      }
+      tile.dataset.seriesKey = sec + '/' + sid;
+      tile.setAttribute('role', 'button');
+      tile.tabIndex = 0;
+      const open = () => {
+        global.Hero?.loadLocal(sec, sid, series);
+        document.querySelector('.hero-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      tile.addEventListener('click', open);
+      tile.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+      });
 
       row.appendChild(tile);
       const spark = tile.querySelector('.kpi-spark');
@@ -144,9 +134,9 @@
       const key = cd.dataset.calKey;
       if (!key) { cd.innerHTML = '<span class="cd-label">NEXT</span><span class="cd-val">market-hours</span>'; return; }
       const next = calendarEvents
-        .filter(e => e.key === key && new Date(e.datetime).getTime() > now)
+        .filter(e => e.key === key && e.verified_at && ['confirmed', 'provisional'].includes(e.status) && new Date(e.datetime).getTime() > now)
         .sort((a, b) => a.datetime.localeCompare(b.datetime))[0];
-      if (!next) { cd.innerHTML = '<span class="cd-label">NEXT</span><span class="cd-val">tbd</span>'; return; }
+      if (!next) { cd.innerHTML = '<span class="cd-label">NEXT</span><span class="cd-val">not announced</span>'; return; }
 
       const t = new Date(next.datetime).getTime();
       const diffMs = t - now;
@@ -162,8 +152,8 @@
         weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
       });
       cd.innerHTML = `
-        <span class="cd-label">NEXT</span>
-        <span class="cd-val" title="${escapeHtml(next.title)} · ${localStr}">${label}</span>
+        <span class="cd-label">${next.status === 'provisional' ? 'PROV.' : 'NEXT'}</span>
+        <span class="cd-val" title="${escapeHtml(next.title)} · ${localStr} · ${next.status} · ${next.verification}">${label}</span>
       `;
     });
   }
@@ -172,20 +162,6 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  /**
-   * Format "2026-02-01" → "Feb 2026" (or "29 May 2026" for recent dates).
-   * Returns "" if missing. Used to tell the user how fresh the value is.
-   */
-  function formatAsOf(iso) {
-    if (!iso) return '';
-    const d = new Date(iso + 'T00:00:00Z');
-    if (isNaN(d)) return '';
-    // Within the last 90 days: show full date. Older: just month + year.
-    const ageDays = (Date.now() - d.getTime()) / 86_400_000;
-    return ageDays < 90
-      ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-      : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-  }
 
   global.KPI = { init };
 })(window);

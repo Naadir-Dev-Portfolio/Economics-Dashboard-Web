@@ -37,11 +37,20 @@
   ];
 
   const POLL_MS = 20_000;
+  const LOCAL_REFS = {
+    sp500: ['markets', 'sp500'], ftse100: ['markets', 'ftse100'], nasdaq: ['markets', 'nasdaq'],
+    dax: ['markets', 'dax'], gold: ['commodities', 'gold'], brent: ['commodities', 'oil_brent'],
+    gbpusd: ['fx', 'gbp_usd'], btc: ['fx', 'btc_usd'], eth: ['fx', 'eth_usd'],
+    sol: ['fx', 'sol_usd'], xrp: ['fx', 'xrp_usd'], atom: ['fx', 'atom_usd'],
+  };
   const lastPrice = {};       // tile id → previous numeric price (for flash detection)
   const tilesByKey = new Map();
   let poller = null;
+  let refreshing = false;
+  let localData = {};
 
   function init(sectionData) {
+    localData = sectionData;
     const majorRow = document.getElementById('live-major');
     const cryptoRow = document.getElementById('live-crypto');
     if (!majorRow || !cryptoRow) return;
@@ -51,15 +60,8 @@
     [...MAJOR, ...CRYPTO].forEach(tile => {
       // Best-effort seed from local cached data so tiles render before the
       // first poll arrives.
-      let seed = null;
-      if (tile.id === 'sp500')   seed = sectionData?.markets?.series?.sp500;
-      if (tile.id === 'ftse100') seed = sectionData?.markets?.series?.ftse100;
-      if (tile.id === 'nasdaq')  seed = sectionData?.markets?.series?.nasdaq;
-      if (tile.id === 'dax')     seed = sectionData?.markets?.series?.dax;
-      if (tile.id === 'gold')    seed = sectionData?.commodities?.series?.gold;
-      if (tile.id === 'brent')   seed = sectionData?.commodities?.series?.oil_brent;
-      if (tile.id === 'gbpusd')  seed = sectionData?.fx?.series?.gbp_usd;
-      if (tile.id === 'btc')     seed = sectionData?.fx?.series?.btc_usd;
+      const [section, sid] = LOCAL_REFS[tile.id] || [];
+      const seed = sectionData[section]?.series?.[sid];
       const el = buildTile(tile, seed);
       (CRYPTO.includes(tile) ? cryptoRow : majorRow).appendChild(el);
       tilesByKey.set(tile.id + (CRYPTO.includes(tile) ? '-c' : '-m'), el);
@@ -88,23 +90,20 @@
         <span class="lt-arrow">·</span>
         <span class="lt-chg-num">—</span>
       </div>
+      <div class="lt-status">${seed ? 'Snapshot ' + global.ChartKit.observationLabel(seed) : 'No quote available'}</div>
     `;
-    el.addEventListener('click', () => {
-      if (spec.tv && global.Hero) {
-        const sel = document.getElementById('hero-symbol');
-        if (sel) {
-          let opt = Array.from(sel.options).find(o => o.value === spec.tv);
-          if (!opt) {
-            opt = document.createElement('option');
-            opt.value = spec.tv;
-            opt.textContent = spec.label;
-            sel.appendChild(opt);
-          }
-          sel.value = spec.tv;
-        }
-        global.Hero.setSymbol(spec.tv);
-        document.querySelector('.hero-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    const open = () => {
+      const [section, sid] = LOCAL_REFS[spec.id] || [];
+      const series = localData[section]?.series?.[sid];
+      if (series) global.Hero?.loadLocal(section, sid, series);
+      else global.Hero?.setSymbol(spec.tv, spec.label);
+      document.querySelector('.hero-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
     });
     return el;
   }
@@ -124,24 +123,36 @@
 
   // ────────── data fetching ──────────
   async function refresh() {
+    if (refreshing || document.hidden) return;
+    refreshing = true;
     try {
       const [cg, yh] = await Promise.all([fetchCoinGecko(), fetchYahoo()]);
-      applyResults(cg || {}, yh || {});
+      const updated = applyResults(cg || {}, yh || {});
       const last = document.getElementById('live-last');
-      if (last) last.textContent = 'last tick ' + new Date().toLocaleTimeString('en-GB', { hour12: false });
+      if (last) last.textContent = updated ? 'Quotes received ' + new Date().toLocaleTimeString('en-GB', { hour12: false }) : 'Live feeds unavailable; snapshots retained';
     } catch (e) {
       console.warn('[live-prices] poll failed', e);
+    } finally {
+      refreshing = false;
     }
+  }
+
+  async function requestJSON(url) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+      if (!response.ok) throw new Error('Quote request failed');
+      return await response.json();
+    } finally { clearTimeout(timeout); }
   }
 
   async function fetchCoinGecko() {
     const ids = [...new Set([...MAJOR, ...CRYPTO].filter(t => t.kind === 'coingecko').map(t => t.src))];
     if (!ids.length) return {};
-    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`;
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true`;
     try {
-      const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) { global.HealthPanel?.setRuntimeStatus('coingecko', false); return {}; }
-      const j = await r.json();
+      const j = await requestJSON(url);
       global.HealthPanel?.setRuntimeStatus('coingecko', Object.keys(j).length > 0);
       return j;
     } catch (_) {
@@ -162,9 +173,7 @@
     const target = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(','))}`;
     for (const proxy of CORS_PROXIES) {
       try {
-        const r = await fetch(proxy(target), { cache: 'no-store' });
-        if (!r.ok) continue;
-        const json = await r.json();
+        const json = await requestJSON(proxy(target));
         const list = json?.quoteResponse?.result || [];
         if (!list.length) continue;
         const map = {};
@@ -178,28 +187,35 @@
   }
 
   function applyResults(cgData, yhData) {
+    let updated = 0;
     [...MAJOR, ...CRYPTO].forEach(spec => {
-      let price = null, change = null;
+      let price = null, change = null, timestamp = null;
       if (spec.kind === 'coingecko') {
         const row = cgData[spec.src];
         if (row) {
           price = row.usd;
           change = row.usd_24h_change;
+          timestamp = row.last_updated_at;
         }
       } else if (spec.kind === 'yahoo') {
         const row = yhData[spec.src];
         if (row) {
           price = row.regularMarketPrice;
           change = row.regularMarketChangePercent;
+          timestamp = row.regularMarketTime;
         }
       }
-      if (price == null) return;
+      if (!Number.isFinite(price) || !Number.isFinite(timestamp) || timestamp <= 0 || timestamp * 1000 > Date.now() + 300000) return;
       const inCrypto = CRYPTO.includes(spec);
       const key = spec.id + (inCrypto ? '-c' : '-m');
       const el = tilesByKey.get(key);
       if (!el) return;
       updateTile(el, spec, price, change);
+      el.querySelector('.lt-status').textContent = 'Quote ' + new Date(timestamp * 1000).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      el.querySelector('.lt-status').classList.toggle('is-warning', Date.now() - timestamp * 1000 > 86400000);
+      updated += 1;
     });
+    return updated;
   }
 
   function updateTile(el, spec, price, change24h) {

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-03T11:34:38+00:00",
-  "duration_sec": 48.5,
+  "generated_at": "2026-09-03T20:24:27+00:00",
+  "duration_sec": 10.9,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -9,7 +9,9 @@
       "file": "data/markets.json",
       "series_count": 17,
       "ok": 17,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "bonds": {
       "title": "Bond Yields",
@@ -18,7 +20,9 @@
       "file": "data/bonds.json",
       "series_count": 14,
       "ok": 14,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "rates": {
       "title": "Central Bank Rates",
@@ -27,7 +31,9 @@
       "file": "data/rates.json",
       "series_count": 9,
       "ok": 9,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "inflation": {
       "title": "Inflation",
@@ -36,7 +42,9 @@
       "file": "data/inflation.json",
       "series_count": 12,
       "ok": 12,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "money": {
       "title": "Money & Liquidity",
@@ -45,34 +53,42 @@
       "file": "data/money.json",
       "series_count": 10,
       "ok": 10,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 1
     },
     "housing": {
       "title": "Housing",
       "icon": "home",
-      "blurb": "Residential property \u2014 the household balance-sheet anchor.",
+      "blurb": "Residential property — the household balance-sheet anchor.",
       "file": "data/housing.json",
       "series_count": 27,
       "ok": 27,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 1
     },
     "commodities": {
       "title": "Commodities",
       "icon": "oil_barrel",
-      "blurb": "Raw materials \u2014 the real-economy temperature gauge.",
+      "blurb": "Raw materials — the real-economy temperature gauge.",
       "file": "data/commodities.json",
       "series_count": 16,
       "ok": 16,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "fx": {
       "title": "Currencies",
       "icon": "currency_exchange",
       "blurb": "Exchange rates and the dollar's grip on global liquidity.",
       "file": "data/fx.json",
-      "series_count": 13,
-      "ok": 13,
-      "fail": 0
+      "series_count": 16,
+      "ok": 16,
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "employment": {
       "title": "Employment",
@@ -81,16 +97,20 @@
       "file": "data/employment.json",
       "series_count": 23,
       "ok": 23,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "macro": {
       "title": "Growth & Output",
       "icon": "factory",
       "blurb": "GDP, industrial production, sentiment, leading indicators.",
       "file": "data/macro.json",
-      "series_count": 12,
-      "ok": 12,
-      "fail": 0
+      "series_count": 13,
+      "ok": 13,
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     },
     "risk": {
       "title": "Risk & Stress",
@@ -99,11 +119,16 @@
       "file": "data/risk.json",
       "series_count": 9,
       "ok": 9,
-      "fail": 0
+      "fail": 0,
+      "stale": 0,
+      "archived": 0
     }
   },
+  "schema_version": 2,
   "totals": {
-    "ok": 162,
-    "fail": 0
+    "ok": 166,
+    "fail": 0,
+    "stale": 0,
+    "archived": 2
   }
 }

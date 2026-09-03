@@ -28,10 +28,10 @@
   <div class="stale-banner" id="stale-banner" hidden>
     <div class="stale-icon">⚠</div>
     <div class="stale-text">
-      <div class="stale-title" id="stale-title">Calendar maintenance needed</div>
+      <div class="stale-title" id="stale-title">Data quality notice</div>
       <div class="stale-body"  id="stale-body">—</div>
     </div>
-    <button class="stale-dismiss" id="stale-dismiss" title="Hide for 7 days">×</button>
+    <button class="stale-dismiss" id="stale-dismiss" title="Dismiss notice" aria-label="Dismiss notice">×</button>
   </div>
 
   <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━ TOP BAR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
@@ -171,8 +171,8 @@
       <section class="live-tiles" id="live-tiles" aria-label="Live market prices">
         <header class="live-head">
           <div class="live-head-l">
-            <span class="live-tag"><span class="dot dot-pulse"></span> LIVE FEED</span>
-            <span class="live-sub">CoinGecko · Yahoo · refreshing every 20s</span>
+            <span class="live-tag">MARKET WATCH</span>
+            <span class="live-sub">CoinGecko · Yahoo Finance</span>
           </div>
           <div class="live-head-r">
             <span class="live-last" id="live-last">—</span>
@@ -204,88 +204,12 @@
     <section class="hero-panel" id="hero-panel">
       <header class="hero-head">
         <div class="hero-meta">
-          <select class="hero-symbol" id="hero-symbol" aria-label="Hero symbol">
-            <optgroup label="Equity indices">
-              <option value="FOREXCOM:SPX500" selected>S&amp;P 500</option>
-              <option value="FOREXCOM:DJI">Dow Jones Industrial</option>
-              <option value="FOREXCOM:NSXUSD">Nasdaq 100</option>
-              <option value="NASDAQ:QQQ">Nasdaq 100 (QQQ ETF)</option>
-              <option value="AMEX:IWM">Russell 2000 (IWM)</option>
-              <option value="FOREXCOM:UK100">FTSE 100 (UK)</option>
-              <option value="TVC:MCX">FTSE 250 (UK)</option>
-              <option value="FOREXCOM:GRXEUR">DAX 40 (Germany)</option>
-              <option value="FOREXCOM:FRXEUR">CAC 40 (France)</option>
-              <option value="CAPITALCOM:EU50">Euro Stoxx 50</option>
-              <option value="CAPITALCOM:ESP35">IBEX 35 (Spain)</option>
-              <option value="FOREXCOM:JPXJPY">Nikkei 225 (Japan)</option>
-              <option value="FOREXCOM:HKG33">Hang Seng (Hong Kong)</option>
-              <option value="AMEX:FXI">China large-caps (FXI ETF)</option>
-              <option value="FOREXCOM:AUS200">ASX 200 (Australia)</option>
-              <option value="BSE:SENSEX">BSE Sensex (India)</option>
-              <option value="AMEX:EWC">Canada (EWC ETF)</option>
-              <option value="AMEX:EWZ">Brazil (EWZ ETF)</option>
-            </optgroup>
-            <optgroup label="Sovereign yields">
-              <option value="TVC:US02Y">US 2-Year Treasury</option>
-              <option value="TVC:US05Y">US 5-Year Treasury</option>
-              <option value="TVC:US10Y">US 10-Year Treasury</option>
-              <option value="TVC:US30Y">US 30-Year Treasury</option>
-              <option value="TVC:GB02Y">UK 2-Year Gilt</option>
-              <option value="TVC:GB10Y">UK 10-Year Gilt</option>
-              <option value="TVC:DE10Y">Germany 10-Year Bund</option>
-              <option value="TVC:FR10Y">France 10-Year OAT</option>
-              <option value="TVC:IT10Y">Italy 10-Year BTP</option>
-              <option value="TVC:JP10Y">Japan 10-Year JGB</option>
-              <option value="TVC:AU10Y">Australia 10-Year</option>
-            </optgroup>
-            <optgroup label="Commodities &amp; energy">
-              <option value="TVC:UKOIL">Brent Crude</option>
-              <option value="TVC:USOIL">WTI Crude</option>
-              <option value="TVC:NATURALGAS">Natural Gas</option>
-              <option value="TVC:GOLD">Gold</option>
-              <option value="TVC:SILVER">Silver</option>
-              <option value="TVC:PLATINUM">Platinum</option>
-              <option value="CAPITALCOM:COPPER">Copper</option>
-              <option value="CBOT:ZW1!">Wheat</option>
-              <option value="CBOT:ZC1!">Corn</option>
-              <option value="ICE:KC1!">Coffee</option>
-              <option value="ICE:SB1!">Sugar</option>
-            </optgroup>
-            <optgroup label="FX &amp; crypto">
-              <option value="FX:GBPUSD">GBP/USD</option>
-              <option value="FX:EURUSD">EUR/USD</option>
-              <option value="FX:USDJPY">USD/JPY</option>
-              <option value="FX:USDCHF">USD/CHF</option>
-              <option value="FX:AUDUSD">AUD/USD</option>
-              <option value="FX:USDCAD">USD/CAD</option>
-              <option value="FX_IDC:USDCNH">USD/CNH</option>
-              <option value="FX_IDC:USDINR">USD/INR</option>
-              <option value="TVC:DXY">DXY Dollar Index</option>
-              <option value="BINANCE:BTCUSDT">Bitcoin</option>
-              <option value="BINANCE:ETHUSDT">Ethereum</option>
-            </optgroup>
-            <optgroup label="Volatility &amp; stress">
-              <option value="TVC:VIX">VIX (S&amp;P 500 vol)</option>
-              <option value="TVC:VXN">VXN (Nasdaq vol)</option>
-              <option value="TVC:MOVE">MOVE (bond vol)</option>
-            </optgroup>
-            <optgroup label="Macro indicators">
-              <option value="ECONOMICS:USINTR">US Fed Funds Rate</option>
-              <option value="ECONOMICS:GBINTR">UK BoE Bank Rate</option>
-              <option value="ECONOMICS:EUINTR">ECB Deposit Rate</option>
-              <option value="ECONOMICS:USM2">US M2 Money Supply</option>
-              <option value="ECONOMICS:USIRYY">US CPI YoY</option>
-              <option value="ECONOMICS:GBIRYY">UK CPI YoY</option>
-              <option value="ECONOMICS:USURATE">US Unemployment</option>
-              <option value="ECONOMICS:GBURATE">UK Unemployment</option>
-              <option value="ECONOMICS:USGDPYY">US GDP YoY</option>
-              <option value="ECONOMICS:GBGDPYY">UK GDP YoY</option>
-            </optgroup>
-          </select>
+          <select class="hero-symbol" id="hero-symbol" aria-label="Chart series"></select>
           <div class="hero-quote" id="hero-quote">
             <span class="hero-name" id="hero-name">S&amp;P 500</span>
             <span class="hero-value" id="hero-value">—</span>
             <span class="hero-change" id="hero-change">—</span>
+            <span class="hero-asof" id="hero-asof"></span>
           </div>
         </div>
         <div class="hero-actions">
@@ -293,18 +217,35 @@
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 L17 7 M9 7 L17 7 L17 15"/></svg>
             <span>TRADINGVIEW</span>
           </a>
-          <button class="hero-btn" id="hero-tv-toggle" title="Toggle live TradingView vs. archive view">
-            <span class="dot dot-pulse"></span> LIVE
-          </button>
+          <div class="chart-modes" role="group" aria-label="Chart view">
+            <button id="hero-mode-archive" class="is-active" aria-pressed="true">Archive</button>
+            <button id="hero-mode-live" aria-pressed="false" title="TradingView market chart">Live</button>
+          </div>
         </div>
       </header>
+      <div class="hero-tools" id="hero-tools">
+        <div class="chart-ranges" role="group" aria-label="Archive time range">
+          <button data-hero-range="1M">1M</button><button data-hero-range="6M">6M</button>
+          <button data-hero-range="1Y">1Y</button><button data-hero-range="5Y">5Y</button>
+          <button data-hero-range="10Y">10Y</button><button data-hero-range="MAX">MAX</button>
+        </div>
+        <div class="chart-dates">
+          <input type="date" id="hero-date-from" aria-label="Start date" title="Start date" />
+          <span aria-hidden="true">to</span>
+          <input type="date" id="hero-date-to" aria-label="End date" title="End date" />
+        </div>
+        <div class="chart-tools">
+          <button id="hero-reset" class="icon-tool" title="Reset zoom" aria-label="Reset zoom"><i data-lucide="rotate-ccw"></i></button>
+          <button id="hero-export" class="icon-tool" title="Download series CSV" aria-label="Download series CSV"><i data-lucide="download"></i></button>
+        </div>
+      </div>
       <div class="hero-chart" id="hero-chart"></div>
       <footer class="hero-foot">
         <div class="hero-annotations" id="hero-annotations" hidden>
           <span class="ann-label">ANNOTATIONS:</span>
           <span class="ann-list" id="ann-list"></span>
         </div>
-        <div class="hero-source">TradingView · annotate via Events panel →</div>
+        <div class="hero-source" id="hero-source"></div>
       </footer>
     </section>
 
@@ -422,6 +363,9 @@
             </div>
             <div class="cat-focus-source">—</div>
           </div>
+          <div class="chart-ranges cat-ranges" role="group" aria-label="Chart time range">
+            <button data-card-range="1Y">1Y</button><button data-card-range="5Y" class="is-active">5Y</button><button data-card-range="MAX">MAX</button>
+          </div>
           <div class="cat-focus-chart"></div>
         </div>
         <div class="cat-carousel" role="listbox" aria-label="Series in this category">
@@ -463,7 +407,7 @@
         <div>
           <div class="modal-tag">RESEARCH · UPCOMING</div>
           <h2>Economic Calendar</h2>
-          <div class="modal-sub">High-impact releases for the next ~180 days. Click an event to add to your calendar.</div>
+          <div class="modal-sub">Published release dates</div>
         </div>
         <div class="modal-actions">
           <div class="cal-nav">
@@ -479,6 +423,7 @@
           <button class="modal-close" data-close-modal>✕</button>
         </div>
       </header>
+      <div class="calendar-status" id="calendar-status"></div>
       <div class="modal-body" id="calendar-body">
         <div class="modal-loading">› loading calendar…</div>
       </div>
@@ -559,8 +504,8 @@
     <div class="boot-bar"><div class="boot-bar-fill"></div></div>
   </div>
 
-  <!-- ECharts via CDN (small charts) -->
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="assets/vendor/echarts-5.5.1.min.js"></script>
+  <script src="assets/vendor/lucide-0.468.0.min.js"></script>
   <!-- TradingView widget loader -->
   <script src="https://s3.tradingview.com/tv.js"></script>
 

@@ -26,14 +26,14 @@
 
 A single-page dashboard that pulls together more than 160 macro time series — equity indices, bond yields, central bank rates, inflation, money supply, housing, commodities, FX, employment, GDP and risk indicators — and renders them in one cohesive UK-first view. The data refreshes itself on a schedule, the page hosts as static files, and there is no backend to run.
 
-The workflow is built around three jobs running on GitHub Actions cron. Twice a day a Python pipeline pulls fresh observations from FRED, Yahoo Finance, the UK Land Registry's full HPI CSV, the gov.uk DESNZ weekly fuel survey and the ONS time-series API, then commits the resulting JSON back to the repository. Every hour a separate job aggregates 14 RSS news feeds and rebuilds the economic event calendar by scraping federalreserve.gov for the next FOMC dates and computing the rest of the monthly release schedule from published patterns. The browser then fetches static JSON, polls CoinGecko and Yahoo for real-time prices every 20 seconds, and embeds a TradingView widget for the live hero chart.
+One GitHub Actions workflow runs a full data refresh twice daily and news/calendar refreshes hourly. It uses FRED, Yahoo, ONS, BIS, BoE, ECB, Eurostat, Land Registry and DESNZ, validates observations, commits JSON and explicitly checks Pages publication. The browser defaults to an interactive stored-data archive, with optional live quotes and TradingView feeds.
 
 The practical outcome: instead of opening five different sites to check the macro picture — FRED for inflation, Yahoo for the FTSE, the Bank of England PDF for the next MPC, gov.uk for fuel prices, the Land Registry for house prices — everything sits on one page with a coherent narrative, an interactive event timeline, downloadable CSVs, an economic calendar that exports to Google or Outlook, and an in-app glossary for when the terminology gets in the way.
 
 ## What Problem It Solves
 
 - Removes the tab-juggling between FRED, Yahoo Finance, ONS, gov.uk, the Bank of England and the ECB just to assemble a coherent macro picture.
-- Replaces the once-and-forgotten "static screenshots in a blog post" approach with data that refreshes itself in perpetuity via GitHub Actions, with zero ongoing maintenance.
+- Refreshes data automatically while exposing source failures, retained observations and reporting lag. External APIs can still require maintenance.
 - Closes the visibility gap on UK regional housing — most public dashboards stop at "UK average" while Land Registry already publishes 14 distinct regions back to 1968.
 - Compared with subscription tools (Bloomberg, Refinitiv, Trading Economics) it costs nothing, runs in any browser, and the code is fully auditable; compared with hand-rolling the same in Excel it stays current without anybody touching it.
 
@@ -41,17 +41,17 @@ The practical outcome: instead of opening five different sites to check the macr
 
 | Track | Analyse | Compare |
 |---|---|---|
-| 162 macro time series across markets, rates, inflation, housing, commodities, FX, employment, GDP and risk | Hero TradingView chart with archive-mode event annotations, yield-curve inversions, KPI countdowns to the next central-bank decision | 14 UK regions of house prices side-by-side from 1968; UK vs US vs Eurozone inflation, rates, unemployment and GDP |
-| Live realtime prices for the major indices and 5 crypto assets, polled every 20 s | Live RSS newswire from BBC, Reuters, FT, BoE, ECB, Fed, Bloomberg, AP, MarketWatch, CNBC, Guardian | Headline UK unemployment alongside age-band breakdowns (16-19, 20-24, 25-34, 55+) and gender splits |
+| 166 economic and market series | Interactive archive with daily market history, zoom, pan, date ranges and annotations | UK, US and international comparisons with explicit reporting periods |
+| Timestamped snapshots and optional browser quotes for indices and five crypto assets | RSS newswire and published release calendars | UK unemployment with correctly labelled age and gender breakdowns |
 | Per-source data-health panel showing last-fetch age, delivered/expected counts and runtime status | Auto-generated economic calendar covering the next 12 months of FOMC, BoE, ECB, NFP, CPI, PCE, retail and UK labour releases | "as of [date]" stamp on every chart so the publication lag of each source is always visible |
 
 ## Feature Highlights
 
-- **Live realtime price tiles**, eight headline tiles (S&P, FTSE, Nasdaq, DAX, gold, Brent, GBP/USD, BTC) plus an expandable crypto strip with ETH/SOL/XRP/ATOM polled every 20 s from CoinGecko and a Yahoo CORS-proxied feed, with flash-on-tick animations.
-- **162 time series with proper provenance**, sourced from FRED, Yahoo Finance, HM Land Registry, gov.uk DESNZ and the ONS direct API — choosing the freshest available source per series (e.g. ONS direct for UK unemployment beats the OECD-aggregated FRED version by ~3 months).
+- **Timestamped market tiles**, with stored snapshots and optional quotes that show the provider timestamp and degrade visibly when a feed is unavailable.
+- **166 series with provenance**, including reporting periods, publication metadata where available, source-specific transformations and individual freshness checks.
 - **Interactive event timeline pinned to the chart**, 42 historical economic events (1971 Nixon Shock through 2025 tariffs) plus auto-promoted current events from the live news feed, each one clickable to draw a vertical annotation on the hero chart.
-- **Self-updating economic calendar**, FOMC dates scraped from federalreserve.gov, BoE and ECB schedules hardcoded with an annual-refresh reminder banner, monthly releases (NFP, CPI, PCE, UK labour, EU CPI flash) all pattern-computed forward 12 months. Every event exports to Google Calendar, Outlook or .ics with one click.
-- **Per-source health dashboard**, sidebar panel with green/amber/red status dots and an expandable detail row showing source URL, type, last-fetch age, delivered-vs-expected count and notes for each of the 9 data pipelines.
+- **Published-date economic calendar**, fetched from official Fed, BoE, ECB, BLS, BEA, ONS and Census schedules. Provisional/cached dates remain labelled; unannounced dates are not estimated.
+- **Per-source health dashboard**, showing current deliveries, overdue observations, retained data and source-level issues. Historical-only series are separate.
 - **Built-in glossary and knowledge base**, 5 categories of macro education content (Fundamentals, Rates, Bonds, Inflation, Money, Stress Signals) plus a 60-term A-Z glossary, searchable in-app — for when "OAS spread" or "M2 YoY" needs explaining.
 - **CSV export on every chart**, downloads the currently-focused series with commented-metadata headers and the most granular data the source provides.
 
@@ -98,13 +98,14 @@ python scripts/fetch_data.py
 python scripts/fetch_news.py
 python scripts/fetch_calendar.py
 python scripts/build_health.py
+python scripts/validate_data.py
 
 # Serve the static site
 python -m http.server 8000
 # open http://localhost:8000
 ```
 
-The dashboard runs entirely from static files (`index.html` + `assets/` + `data/*.json`), so any HTTP server works — GitHub Pages, Netlify, an S3 bucket, `python -m http.server` for local dev. The FRED API key is free (sign up at https://fred.stlouisfed.org/docs/api/api_key.html, takes 30 seconds) and is needed by the Python fetchers but never touches the browser. For full GitHub Actions auto-refresh setup, see [`SETUP.md`](./SETUP.md). For where every value comes from and how reliable each pipeline is, see [`DATA_SOURCES.md`](./DATA_SOURCES.md).
+The dashboard uses static files served over HTTP: `index.html`, `assets/` and `data/*.json`. The FRED API key is used only by the Python fetcher; public CSV is a fallback. See [SETUP.md](SETUP.md) for Actions/Pages operations and [DATA_SOURCES.md](DATA_SOURCES.md) for provenance, reporting lags and failure handling.
 
 ## Tech Stack
 
@@ -132,9 +133,9 @@ The dashboard runs entirely from static files (`index.html` + `assets/` + `data/
 
 ### Application model
 
-A GitHub Actions workflow fires on cron (06:30 and 18:30 UTC for the full pipeline, every hour for news only). The runner installs the Python requirements and runs four scripts: `fetch_data.py` pulls 162 time series from FRED / Yahoo / Land Registry / DESNZ / ONS into per-section JSON files; `fetch_news.py` aggregates 14 RSS feeds, dedupes by URL and keyword-scores items for the "major event" promotion; `fetch_calendar.py` scrapes federalreserve.gov for live FOMC dates and computes 12 months of monthly releases from published patterns; `build_health.py` walks every output file and produces `health.json` summarising per-source delivery and freshness. The runner then commits all the regenerated JSON back to `main`, which triggers GitHub Pages to redeploy.
+The workflow runs at 06:30 and 18:30 UTC for full data and hourly for news/calendars. It runs regression tests, fetches observations and published schedules, builds health, validates artifacts, commits data and explicitly publishes Pages. Source-quality failures are reported after valid updates are published.
 
-In the browser, `main.js` boots, loads the static JSON in parallel, and hands each subsystem its slice — `hero.js` mounts the TradingView widget, `kpi.js` renders the headline tile carousel with countdown timers reading `calendar.json`, `live-prices.js` starts a 20-second poll loop against CoinGecko (no auth) and Yahoo Finance via a CORS proxy, `news.js` populates the marquee ticker and side panel, `events-timeline.js` wires the interactive annotations, `calendar-modal.js` renders the month-grid popup with iCal export, `education-modal.js` renders the searchable knowledge base, and `health-panel.js` drives the data-health sidebar. ECharts is loaded lazily for the category panels.
+In the browser, `main.js` loads static JSON. Hero and category panels share a local ECharts renderer with bounded dates, vertical grids, zoom and pan. Every selector, tile and drill-down uses the exact section/series identity. Economic series keep their native frequency; optional TradingView feeds are separate. ECharts and Lucide are pinned local bundles with licenses.
 
 ### Project structure
 
@@ -172,13 +173,17 @@ Economics-Dashboard-Web/
 |   +-- calendar.json               Next 12 months of economic events
 |   +-- health.json                 Per-source status snapshot
 |   +-- education.json              Glossary + knowledge base
++-- tests/                          Data, calendar, JavaScript and browser regressions
 +-- scripts/
 |   +-- series_config.py            Declarative list of every series
 |   +-- fetch_data.py               Main data pipeline
 |   +-- fetch_news.py               RSS aggregator
 |   +-- fetch_calendar.py           Economic-calendar builder + FOMC scraper
 |   +-- build_health.py             Health snapshot generator
-|   +-- refresh_committee_dates.py  Interactive annual BoE/ECB update helper
+|   +-- data_quality.py             Validation, freshness and calendar-based statistics
+|   +-- source_providers.py         Structured official-source adapters
+|   +-- validate_data.py            Publication gate and Actions health summary
+|   +-- refresh_committee_dates.py  Compatibility alias for automatic calendar refresh
 |   +-- requirements.txt            requests, pandas, yfinance, python-dateutil
 +-- .github/workflows/update-data.yml   Cron + commit-back workflow
 +-- README.md                       This file
@@ -196,7 +201,7 @@ Economics-Dashboard-Web/
 
 - All data persists as plain JSON in the repository — no database, no server-side state. The pipeline is `git`-native: each refresh is a commit, history is a complete audit trail of how the dashboard's view of the world changed over time.
 - The only credential the system uses is the FRED API key, stored as a GitHub repository secret (`FRED_API_KEY`) and injected only into the Action runner environment. It is never written to disk, never sent to the browser, and never appears in committed code. Every other data source is anonymous.
-- Each chart shows an "as of [date]" stamp so users can never mistake a stale value for a current one. The data-health sidebar reports per-source freshness with green/amber/red status, and a top-of-page banner auto-shows if the two hand-curated date lists (BoE MPC, ECB Governing Council) are within 90 days of running out — telling the user exactly which one-line script to run to refresh them.
+- Charts show reporting periods, native frequency and data quality. Refresh timestamps do not imply a new economic release. Calendar dates are automatic, but source changes and persistent outages can still need attention.
 
 </details>
 

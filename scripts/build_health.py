@@ -1,299 +1,159 @@
-"""
-Build data/health.json — per-data-source status for the sidebar health panel.
-
-Walks every data file produced by the other fetchers and aggregates:
-  - which method delivered each series (FRED / Yahoo / gov.uk fuel / Land Reg)
-  - how many series each method delivered vs how many were expected
-  - the freshness of the underlying data (latest observation date)
-  - the freshness of the fetch itself (file's generated_at timestamp)
-
-The frontend reads the resulting health.json to render the panel.
-"""
-
-from __future__ import annotations
-
-import json
-import logging
-import sys
+"""Build source health from individual observations, not file timestamps."""
 from datetime import datetime, timezone
 from pathlib import Path
+import json
+import logging
 
-HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent
-DATA = ROOT / "data"
-sys.path.insert(0, str(HERE))
-from series_config import SECTIONS  # noqa: E402
+from data_quality import freshness, write_json
+from series_config import SECTIONS
 
+DATA = Path(__file__).resolve().parent.parent / 'data'
 UTC = timezone.utc
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
-log = logging.getLogger("health")
+log = logging.getLogger('health')
+
+SOURCE_SPECS = {
+    'fred': ('FRED', 'Federal Reserve Economic Data', 'https://fred.stlouisfed.org/', 'API with public CSV fallback.'),
+    'yahoo': ('Yahoo Finance', 'Yahoo Finance daily history', 'https://finance.yahoo.com/', 'Daily market observations; exchange holidays do not create new observations.'),
+    'ons': ('ONS', 'Office for National Statistics', 'https://www.ons.gov.uk/', 'Official reporting periods, publication dates and next releases are retained.'),
+    'bis': ('BIS', 'Bank for International Settlements', 'https://data.bis.org/', 'National consumer prices and daily central-bank policy rates.'),
+    'boe': ('Bank of England', 'Bank of England monetary statistics', 'https://www.bankofengland.co.uk/', 'Structured monetary-statistics CSV.'),
+    'ecb': ('ECB', 'European Central Bank monetary statistics', 'https://data.ecb.europa.eu/', 'Seasonally adjusted euro-area M3.'),
+    'eurostat': ('Eurostat', 'European statistical office', 'https://ec.europa.eu/eurostat/', 'Euro-area unemployment, seasonally adjusted.'),
+    'uk_fuel': ('UK Fuel (DESNZ)', 'Department for Energy Security and Net Zero', 'https://www.gov.uk/government/statistics/weekly-road-fuel-prices', 'Weekly road-fuel observations.'),
+    'land_registry': ('UK House Prices', 'HM Land Registry', 'https://www.gov.uk/government/collections/uk-house-price-index-reports', 'Monthly observations published with a reporting lag.'),
+}
+
+RUNTIME_SOURCES = [
+    {'id': 'coingecko', 'name': 'CoinGecko', 'url': 'https://www.coingecko.com/', 'notes': 'Optional browser quotes. Each tile retains its own quote timestamp.'},
+    {'id': 'yahoo_proxy', 'name': 'Yahoo browser quotes', 'url': 'https://finance.yahoo.com/', 'notes': 'Best-effort public proxy. Scheduled snapshots remain available when it fails.'},
+    {'id': 'tradingview', 'name': 'TradingView', 'url': 'https://www.tradingview.com/', 'notes': 'Optional embedded market chart. Loading the iframe does not verify its quotes.'},
+]
 
 
-# ───────────────────────── helpers ─────────────────────────
-def load(name: str) -> dict | None:
-    p = DATA / name
-    if not p.exists():
-        return None
+def load(name):
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        log.warning("could not parse %s: %s", name, e)
-        return None
+        return json.loads((DATA / name).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
 
 
-def categorise(source_str: str) -> str:
-    """Bucket the per-series 'source' string into one of the known methods."""
-    if not source_str:
-        return "unknown"
-    s = source_str.upper()
-    if "FRED" in s:                        return "fred"
-    if "YAHOO" in s:                       return "yahoo"
-    if "DESNZ" in s or "GOV.UK" in s:      return "uk_fuel"
-    if "LAND REGISTRY" in s:               return "land_registry"
-    return "unknown"
-
-
-def expected_by_method() -> dict[str, int]:
-    """How many series each method is *meant* to deliver, per config."""
-    counts = {"fred": 0, "yahoo": 0, "uk_fuel": 0, "land_registry": 0}
-    for section in SECTIONS.values():
-        for s in section["series"]:
-            if s.get("yahoo"):       counts["yahoo"] += 1
-            elif s.get("fred"):      counts["fred"] += 1
-            elif s.get("uk_fuel"):   counts["uk_fuel"] += 1
-            elif s.get("uk_hpi"):    counts["land_registry"] += 1
-    return counts
-
-
-def categorise_status(delivered: int, expected: int, age_hours: float | None,
-                      stale_hours: float) -> str:
-    """ok / warning / error from delivered ratio + age."""
-    if expected and delivered == 0:                            return "error"
-    ratio = (delivered / expected) if expected else 1.0
-    if ratio < 0.5:                                            return "error"
-    if age_hours is not None and age_hours > stale_hours * 3:  return "error"
-    if ratio < 0.9 or (age_hours is not None and age_hours > stale_hours):
-        return "warning"
-    return "ok"
-
-
-def hours_since(iso: str | None) -> float | None:
+def hours_since(iso, now=None):
     if not iso:
         return None
     try:
-        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-    except (ValueError, AttributeError):
+        dt = datetime.fromisoformat(iso.replace('Z', '+00:00'))
+        return ((now or datetime.now(UTC)) - dt.astimezone(UTC)).total_seconds() / 3600
+    except (ValueError, TypeError):
         return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return (datetime.now(UTC) - dt).total_seconds() / 3600.0
 
 
-# ───────────────────────── source declarations ─────────────────────────
-# Each entry is the static metadata; runtime counts/dates are filled in below.
-SERVER_SOURCES = [
-    {
-        "id": "fred", "name": "FRED",
-        "full_name": "Federal Reserve Economic Data (St. Louis Fed)",
-        "type": "Python · scripts/fetch_data.py",
-        "url": "https://fred.stlouisfed.org/",
-        "icon": "◭",
-        "method_key": "fred", "stale_hours": 18,
-        "notes": "Authenticated API. Requires FRED_API_KEY repo secret. Covers rates, inflation, money, employment, GDP, housing.",
-    },
-    {
-        "id": "yahoo", "name": "Yahoo Finance",
-        "full_name": "Yahoo Finance (yfinance library)",
-        "type": "Python · scripts/fetch_data.py",
-        "url": "https://finance.yahoo.com/",
-        "icon": "↗",
-        "method_key": "yahoo", "stale_hours": 18,
-        "notes": "No auth. yfinance scrapes Yahoo's internal API. Covers equity indices, commodities, FX, crypto.",
-    },
-    {
-        "id": "uk_fuel", "name": "UK Fuel (DESNZ)",
-        "full_name": "UK Department for Energy Security weekly road fuel prices",
-        "type": "Python · CSV scrape",
-        "url": "https://www.gov.uk/government/statistics/weekly-road-fuel-prices",
-        "icon": "◉",
-        "method_key": "uk_fuel", "stale_hours": 24,
-        "notes": "Weekly CSV. Scrapes the gov.uk landing page for the latest publication.",
-    },
-    {
-        "id": "land_registry", "name": "UK House Prices",
-        "full_name": "HM Land Registry UK House Price Index",
-        "type": "Python · CSV scrape",
-        "url": "https://landregistry.data.gov.uk/",
-        "icon": "⌂",
-        "method_key": "land_registry", "stale_hours": 36,
-        "notes": "Probes last 6 monthly CSV URLs to find the freshest. 405 regions parsed per fetch.",
-    },
-]
-
-# Sources that come from their own JSON file rather than series aggregation.
-FILE_SOURCES = [
-    {
-        "id": "news", "name": "News (RSS)",
-        "full_name": "RSS aggregator: BBC / Reuters / FT / BoE / ECB / Fed / Guardian",
-        "type": "Python · scripts/fetch_news.py",
-        "url": "",
-        "icon": "≡",
-        "file": "news.json",
-        "items_key": "items",
-        "expected": 200,
-        "stale_hours": 3,
-        "include_subsources": True,
-        "notes_fmt": "{alive}/{total} feeds responding. Hourly refresh in CI.",
-    },
-    {
-        "id": "calendar", "name": "Economic Calendar",
-        "full_name": "Computed release calendar (FOMC/BoE/ECB + monthly patterns)",
-        "type": "Python · scripts/fetch_calendar.py",
-        "url": "",
-        "icon": "▦",
-        "file": "calendar.json",
-        "items_key": "events",
-        "expected": 60,
-        "stale_hours": 36,
-        "notes": "Hardcoded committee dates + pattern-computed monthly releases for the next ~180 days.",
-    },
-]
-
-# Browser-side sources — status set client-side; declared here for the UI.
-RUNTIME_SOURCES = [
-    {
-        "id": "coingecko", "name": "CoinGecko (live)",
-        "full_name": "CoinGecko Simple Price API — realtime crypto",
-        "type": "Browser fetch · live-prices.js",
-        "url": "https://api.coingecko.com/",
-        "icon": "◆", "expected": 5,
-        "notes": "Polled every 20s by the browser. Provides BTC / ETH / SOL / XRP / ATOM live prices.",
-    },
-    {
-        "id": "yahoo_proxy", "name": "Yahoo Live (proxied)",
-        "full_name": "Yahoo Finance via public CORS proxy",
-        "type": "Browser fetch · live-prices.js",
-        "url": "https://query1.finance.yahoo.com/",
-        "icon": "↗", "expected": 7,
-        "notes": "Polled every 20s. Index/FX live quotes via corsproxy.io / allorigins.win fallback.",
-    },
-    {
-        "id": "tradingview", "name": "TradingView Widget",
-        "full_name": "TradingView embedded widget — hero chart",
-        "type": "Iframe · tradingview.com",
-        "url": "https://www.tradingview.com/",
-        "icon": "▶",
-        "notes": "Loads the live chart in the hero panel. Failure shows TradingView's own error.",
-    },
-]
+def primary_method(config):
+    for field, method in [('bis_cpi', 'bis'), ('bis_policy', 'bis'), ('boe_money', 'boe'),
+                          ('ecb_money', 'ecb'), ('eurostat', 'eurostat'), ('ons', 'ons'),
+                          ('yahoo', 'yahoo'), ('fred', 'fred'), ('uk_fuel', 'uk_fuel'),
+                          ('uk_hpi', 'land_registry')]:
+        if config.get(field):
+            return method
+    return 'unknown'
 
 
-# ───────────────────────── builders ─────────────────────────
-def aggregate_by_method(manifest: dict) -> dict[str, dict]:
-    """Walk all section JSON files and bucket each series by source method."""
-    by_method: dict[str, dict] = {}
-    for section_key in manifest.get("sections", {}):
-        section_data = load(f"{section_key}.json")
-        if not section_data:
-            continue
-        for series in section_data.get("series", {}).values():
-            method = categorise(series.get("source", ""))
-            slot = by_method.setdefault(method, {"count": 0, "latest_data": None})
-            slot["count"] += 1
-            last_date = (series.get("stats") or {}).get("last_date")
-            if last_date and (slot["latest_data"] is None or last_date > slot["latest_data"]):
-                slot["latest_data"] = last_date
-    return by_method
+def build_series_sources(now=None):
+    now = now or datetime.now(UTC)
+    buckets = {}
+    for section, spec in SECTIONS.items():
+        series = load(section + '.json').get('series', {})
+        for config in spec['series']:
+            item = series.get(config['id'], {})
+            method = item.get('method') or primary_method(config)
+            bucket = buckets.setdefault(method, {
+                'expected': 0, 'delivered': 0, 'available': 0, 'stale': 0,
+                'retained': 0, 'archived': 0, 'missing': 0, 'issues': [],
+                'last_fetch': None, 'latest_data': None,
+            })
+            if item.get('data'):
+                bucket['available'] += 1
+            for field, value in [('last_fetch', item.get('last_checked')),
+                                 ('latest_data', item.get('stats', {}).get('last_date'))]:
+                if value and (not bucket[field] or value > bucket[field]):
+                    bucket[field] = value
+            if config.get('archived'):
+                bucket['archived'] += 1
+                continue
+            bucket['expected'] += 1
+            state = freshness(item, config, now)
+            age = hours_since(item.get('last_success'), now)
+            reasons = []
+            if state in ('missing', 'invalid'):
+                bucket['missing'] += 1
+                reasons.append(state)
+            elif state == 'stale':
+                bucket['stale'] += 1
+                reasons.append('overdue observation')
+            if item.get('fetch_status') == 'retained':
+                bucket['retained'] += 1
+                reasons.append('fetch failed; previous data retained')
+            elif age is None or age > 36:
+                reasons.append('refresh overdue')
+            if reasons:
+                bucket['issues'].append({'id': config['id'], 'section': section,
+                                         'name': config['name'], 'reason': '; '.join(reasons),
+                                         'period': item.get('period_label'), 'last_success': item.get('last_success')})
+            else:
+                bucket['delivered'] += 1
+    result = []
+    for method, bucket in buckets.items():
+        name, full_name, url, notes = SOURCE_SPECS.get(method, (method, method, '', 'Unclassified source.'))
+        status = 'ok' if bucket['delivered'] == bucket['expected'] else 'warning' if bucket['delivered'] else 'error'
+        result.append({'id': method, 'name': name, 'full_name': full_name, 'url': url,
+                       'type': 'Scheduled data fetch', 'icon': '', 'status': status, **bucket,
+                       'notes': notes + f" {bucket['archived']} historical-only series excluded from current-data counts."})
+    return result
 
 
-def build_server_source(spec: dict, by_method: dict, expected: dict,
-                        last_fetch: str | None, fetch_age_h: float | None) -> dict:
-    """Render a Python-fetched source (FRED / Yahoo / fuel / Land Registry)."""
-    bucket = by_method.get(spec["method_key"], {})
-    delivered = bucket.get("count", 0)
-    exp = expected.get(spec["method_key"], 0)
-    return {
-        **{k: spec[k] for k in ("id", "name", "full_name", "type", "url", "icon", "notes")},
-        "delivered": delivered,
-        "expected": exp,
-        "latest_data": bucket.get("latest_data"),
-        "last_fetch": last_fetch,
-        "status": categorise_status(delivered, exp, fetch_age_h, spec["stale_hours"]),
-    }
+def build_calendar(now=None):
+    now = now or datetime.now(UTC)
+    payload = load('calendar.json')
+    meta = payload.get('meta', {})
+    reports = meta.get('sources', {})
+    issues = []
+    for key, source in reports.items():
+        future = [e for e in payload.get('events', []) if e.get('key') == key and datetime.fromisoformat(e['datetime']) > now]
+        if source.get('status') != 'ok' or not future:
+            issues.append({'name': key, 'reason': 'verified cache' if future else 'no published future dates',
+                           'period': source.get('through'), 'last_success': source.get('last_verified')})
+    age = hours_since(meta.get('generated_at'), now)
+    status = 'error' if not reports or age is None or age > 72 else 'warning' if issues or age > 36 else 'ok'
+    return {'id': 'calendar', 'name': 'Economic Calendar', 'full_name': 'Official release calendars',
+            'type': 'Scheduled calendar fetch', 'url': '', 'icon': '', 'status': status,
+            'delivered': len(reports) - len(issues), 'expected': len(reports),
+            'last_fetch': meta.get('generated_at'), 'issues': issues,
+            'notes': 'Published dates only. Cached and provisional entries retain their verification status; unannounced dates are not estimated.'}
 
 
-def build_file_source(spec: dict) -> dict:
-    """Render a source that lives in its own JSON file (news, calendar)."""
-    data = load(spec["file"]) or {}
-    items = data.get(spec["items_key"]) or []
-    meta = data.get("meta") or {}
-    fetched_at = meta.get("generated_at")
-    age_h = hours_since(fetched_at)
-    out = {
-        **{k: spec[k] for k in ("id", "name", "full_name", "type", "url", "icon")},
-        "delivered": len(items),
-        "expected": spec["expected"],
-        "latest_data": (fetched_at or "")[:10] or None,
-        "last_fetch": fetched_at,
-        "status": categorise_status(len(items), spec["expected"], age_h, spec["stale_hours"]),
-    }
-    if spec.get("include_subsources"):
-        sub = meta.get("by_source") or {}
-        alive = sum(1 for v in sub.values() if v)
-        out["sub_sources"] = sub
-        out["notes"] = spec["notes_fmt"].format(alive=alive, total=len(sub))
-    else:
-        out["notes"] = spec["notes"]
+def build_news(now=None):
+    payload = load('news.json')
+    meta = payload.get('meta', {})
+    subs = meta.get('by_source', {})
+    age = hours_since(meta.get('generated_at'), now)
+    alive = sum(bool(v) for v in subs.values())
+    status = 'error' if not payload.get('items') or age is None or age > 24 else 'warning' if age > 3 or alive < len(subs) else 'ok'
+    return {'id': 'news', 'name': 'News (RSS)', 'full_name': 'RSS news feeds', 'url': '', 'icon': '',
+            'type': 'Hourly news fetch', 'last_fetch': meta.get('generated_at'), 'status': status,
+            'delivered': alive, 'expected': len(subs), 'sub_sources': subs,
+            'notes': f"{len(payload.get('items', []))} retained articles; counts show responding feeds."}
+
+
+def build():
+    sources = build_series_sources() + [build_calendar(), build_news()]
+    sources += [{**s, 'runtime': True, 'type': 'Optional browser feed'} for s in RUNTIME_SOURCES]
+    totals = {key: sum(s.get('status') == key for s in sources) for key in ('ok', 'warning', 'error')}
+    totals.update({'runtime': len(RUNTIME_SOURCES), 'total': len(sources)})
+    out = {'generated_at': datetime.now(UTC).isoformat(timespec='seconds'), 'schema_version': 2,
+           'totals': totals, 'sources': sources}
+    write_json(DATA / 'health.json', out, indent=2)
+    print(f"Health: {totals['ok']} healthy, {totals['warning']} warnings, {totals['error']} errors.")
     return out
 
 
-def build_runtime_source(spec: dict) -> dict:
-    """Browser-side source — frontend overrides status at runtime."""
-    return {**spec, "runtime": True}
-
-
-def tally_status(sources: list[dict]) -> dict[str, int]:
-    counts = {"ok": 0, "warning": 0, "error": 0, "runtime": 0}
-    for s in sources:
-        if s.get("runtime"):
-            counts["runtime"] += 1
-        st = s.get("status")
-        if st in counts:
-            counts[st] += 1
-    counts["total"] = len(sources)
-    return counts
-
-
-# ───────────────────────── entrypoint ─────────────────────────
-def build() -> dict:
-    manifest = load("manifest.json") or {"sections": {}}
-    last_fetch = manifest.get("generated_at")
-    fetch_age_h = hours_since(last_fetch)
-
-    by_method = aggregate_by_method(manifest)
-    expected = expected_by_method()
-
-    sources = (
-        [build_server_source(s, by_method, expected, last_fetch, fetch_age_h) for s in SERVER_SOURCES]
-        + [build_file_source(s) for s in FILE_SOURCES]
-        + [build_runtime_source(s) for s in RUNTIME_SOURCES]
-    )
-
-    out = {
-        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "totals": tally_status(sources),
-        "sources": sources,
-    }
-    (DATA / "health.json").write_text(
-        json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-    log.info(
-        "wrote health.json — %d sources (%d ok / %d warn / %d err / %d runtime)",
-        len(sources), out["totals"]["ok"], out["totals"]["warning"],
-        out["totals"]["error"], out["totals"]["runtime"],
-    )
-    return out
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     build()

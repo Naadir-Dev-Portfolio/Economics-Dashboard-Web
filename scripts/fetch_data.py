@@ -3,8 +3,9 @@ Fetch every series declared in series_config.SECTIONS and write JSON to data/.
 
 Sources
 -------
-* FRED  — official macro statistics (requires FRED_API_KEY env var)
+* FRED  — official macro statistics (API key preferred; public CSV fallback)
 * Yahoo Finance — equities, commodities, FX (via yfinance, no key required)
+* Official ONS, BIS, ECB, BoE, Eurostat and UK government endpoints
 
 Output
 ------
@@ -22,10 +23,14 @@ import json
 import logging
 import os
 import sys
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from functools import lru_cache
+import csv
+import io
+import math
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -35,6 +40,10 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 
 from series_config import SECTIONS, EVENTS  # noqa: E402
+from data_quality import (SCHEMA_VERSION, validate_points, frequency_of, freshness,
+                          period_label, compute_stats, yoy, write_json, to_ms)
+from source_providers import (get, bis_cpi, bis_policy, boe_money, ecb_money,
+                              euro_unemployment)
 
 DATA_DIR = ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -56,15 +65,12 @@ log = logging.getLogger("fetch")
 # ──────────────────────────────────────────────────────────────────────────
 def _to_ms(date_str: str) -> int:
     """Date-string (YYYY-MM-DD) -> UTC ms epoch."""
-    dt = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
-    return int(dt.timestamp() * 1000)
+    return to_ms(date_str)
 
 
+@lru_cache(maxsize=192)
 def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
     """Pull a series from FRED. Returns [[ts_ms, value], ...]."""
-    if not FRED_API_KEY:
-        log.warning("FRED_API_KEY not set — skipping %s", series_id)
-        return []
     params = {
         "series_id": series_id,
         "api_key": FRED_API_KEY,
@@ -73,21 +79,23 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
     }
     if frequency:
         params["frequency"] = frequency
-    for attempt in range(3):
+    if FRED_API_KEY:
         try:
-            r = requests.get(FRED_URL, params=params, timeout=30)
-            if r.status_code == 429:
-                time.sleep(2 + attempt * 2)
-                continue
-            r.raise_for_status()
-            break
-        except requests.RequestException as e:
-            log.warning("FRED %s attempt %d failed: %s", series_id, attempt + 1, e)
-            time.sleep(1 + attempt)
+            obs = get(FRED_URL, params=params).json().get('observations', [])
+        except (requests.RequestException, ValueError):
+            # Do not log the exception URL: it contains the API key.
+            log.warning('FRED API unavailable for %s; trying its public CSV', series_id)
+            obs = []
     else:
-        return []
-
-    obs = r.json().get("observations", [])
+        obs = []
+    if not obs:
+        try:
+            response = get('https://fred.stlouisfed.org/graph/fredgraph.csv', params={'id': series_id, 'cosd': START_DATE})
+            rows = csv.DictReader(io.StringIO(response.text))
+            obs = [{'date': r.get('observation_date', r.get('DATE')), 'value': r.get(series_id)} for r in rows]
+        except (requests.RequestException, ValueError):
+            log.warning('FRED CSV unavailable for %s', series_id)
+            return []
     out: list[list] = []
     for o in obs:
         v = o.get("value")
@@ -101,279 +109,67 @@ def fetch_fred(series_id: str, frequency: str | None = None) -> list[list]:
     return out
 
 
-# ── Bank of England Bank Rate (the policy rate) ──
-# We previously used FRED's INTGSBGBM193N which (a) was actually a 20-year
-# gilt yield, not the policy rate, and (b) stopped updating in mid-2025
-# when the IMF discontinued it. So we now fetch from the BoE directly.
-#
-# RESILIENCE: three independent strategies, tried in order. Each can fail
-# without the dashboard going blank (we keep previous data via the
-# pipeline's preserve-on-failure logic):
-#
-#   1. Bank-Rate.asp strict scrape — fastest, exact regex with align=
-#   2. Bank-Rate.asp loose scrape  — same page, attribute-agnostic regex
-#                                    (survives a CSS/layout refresh as long
-#                                     as the table cells still exist)
-#   3. IADB CSV endpoint           — completely different URL/format,
-#                                    structured CSV (DATE,VALUE), daily
-#                                    granularity for IUDBEDR series
-#
-# Each result is validated: ≥10 observations, latest rate 0-25%, latest
-# observation within the last 24 months. Strategies that produce data
-# failing the sanity check are skipped rather than trusted.
-_BOE_MONTHS = {'Jan':1,'Feb':2,'Mar':3,'Apr':4,'May':5,'Jun':6,
-               'Jul':7,'Aug':8,'Sep':9,'Oct':10,'Nov':11,'Dec':12}
-_BOE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-_BOE_HTML_URL = "https://www.bankofengland.co.uk/boeapps/database/Bank-Rate.asp"
-_BOE_CSV_URL  = ("https://www.bankofengland.co.uk/boeapps/iadb/"
-                 "fromshowcolumns.asp?csv.x=yes&Datefrom=01/Jan/1975&Dateto=now"
-                 "&SeriesCodes=IUDBEDR&UsingCodes=Y&CSVF=TN&VPD=Y&VFD=N")
-
-_boe_html_cache: dict[str, str] = {}
-
-
-def _boe_fetch_html() -> str:
-    """Fetch the Bank-Rate.asp page once per process and cache it."""
-    if "html" not in _boe_html_cache:
-        try:
-            r = requests.get(_BOE_HTML_URL, timeout=30,
-                             headers={"User-Agent": _BOE_UA})
-            r.raise_for_status()
-            _boe_html_cache["html"] = r.text
-        except requests.RequestException as e:
-            log.warning("BoE Bank-Rate.asp fetch failed: %s", e)
-            _boe_html_cache["html"] = ""
-    return _boe_html_cache["html"]
-
-
-def _boe_parse_2digit_year(yy_or_yyyy: str) -> int | None:
-    """'25' → 2025, '95' → 1995, '2025' → 2025. Returns None if unparseable."""
-    try:
-        n = int(yy_or_yyyy)
-    except (TypeError, ValueError):
-        return None
-    if n < 100:
-        # Two-digit: <50 → 2000s, else 1900s. Handles 1950-2049 unambiguously,
-        # which covers every observation in BoE history (oldest table row is 1975).
-        return 2000 + n if n < 50 else 1900 + n
-    return n
-
-
-def _boe_change_points_from_pairs(pairs: list[tuple]) -> list[tuple]:
-    """Turn (dd, mon, yy, rate) tuples into [(date, float), ...] sorted oldest first."""
-    from datetime import date as _date
-    out: list[tuple] = []
-    for dd, mon, yy, rate in pairs:
-        m = _BOE_MONTHS.get(mon)
-        if not m:
-            continue
-        year = _boe_parse_2digit_year(yy)
-        if year is None:
-            continue
-        try:
-            out.append((_date(year, m, int(dd)), float(rate)))
-        except (ValueError, TypeError):
-            continue
-    out.sort()
-    return out
-
-
-def _boe_strategy_strict_html() -> list[tuple]:
-    """Tightest pattern — `<td align="left">DATE</td><td align="right">RATE</td>`.
-    Fastest and most specific; first to try."""
-    html = _boe_fetch_html()
-    if not html:
-        return []
-    import re as _re
-    pairs = _re.findall(
-        r'<td align="left">\s*(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{2})\s*</td>\s*'
-        r'<td align="right">\s*(\d+(?:\.\d+)?)\s*</td>',
-        html,
-    )
-    return _boe_change_points_from_pairs(pairs)
-
-
-def _boe_strategy_loose_html() -> list[tuple]:
-    """Attribute-agnostic pattern — any pair of `<td>DATE</td>...<td>RATE</td>`.
-    Survives a CSS refresh that strips `align=` attributes or adds classes."""
-    html = _boe_fetch_html()
-    if not html:
-        return []
-    import re as _re
-    # Allow 2- or 4-digit year, any td attributes, optional whitespace
-    pairs = _re.findall(
-        r'<td[^>]*>\s*(\d{1,2})\s+([A-Z][a-z]{2})\s+(\d{2,4})\s*</td>'
-        r'\s*<td[^>]*>\s*(\d+(?:\.\d+)?)\s*</td>',
-        html,
-    )
-    return _boe_change_points_from_pairs(pairs)
-
-
-def _boe_strategy_iadb_csv() -> list[tuple]:
-    """Completely different endpoint: IADB CSV exporter for series IUDBEDR.
-    Returns daily values; we collapse to change points."""
-    try:
-        r = requests.get(_BOE_CSV_URL, timeout=30,
-                         headers={"User-Agent": _BOE_UA},
-                         allow_redirects=True)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        log.warning("BoE IADB CSV fetch failed: %s", e)
-        return []
-
-    from datetime import date as _date
-    rows: list[tuple] = []
-    for line in r.text.splitlines():
-        line = line.strip()
-        if not line or line.upper().startswith("DATE"):
-            continue
-        parts = [p.strip() for p in line.split(",")]
-        if len(parts) < 2:
-            continue
-        try:
-            v = float(parts[1])
-        except ValueError:
-            continue
-        # CSV date format: "02 Jan 2024"
-        dparts = parts[0].split()
-        if len(dparts) != 3:
-            continue
-        m = _BOE_MONTHS.get(dparts[1])
-        if not m:
-            continue
-        year = _boe_parse_2digit_year(dparts[2])
-        if year is None:
-            continue
-        try:
-            rows.append((_date(year, m, int(dparts[0])), v))
-        except (ValueError, TypeError):
-            continue
-
-    rows.sort()
-    # Collapse daily series to change points only
-    changes: list[tuple] = []
-    last = None
-    for d, v in rows:
-        if v != last:
-            changes.append((d, v))
-            last = v
-    return changes
-
-
-def _boe_forward_fill_monthly(changes: list[tuple]) -> list[list]:
-    """Step-function forward-fill: emit one point per month from the earliest
-    change to today, with the value in force at the end of that month."""
-    if not changes:
-        return []
-    from datetime import date as _date, timedelta as _td
-    out: list[list] = []
-    first = changes[0][0]
-    cursor = _date(first.year, first.month, 1)
-    today = _date.today()
-    change_idx = 0
-    current_rate: float | None = None
-    while cursor <= today:
-        next_month = (_date(cursor.year + 1, 1, 1)
-                      if cursor.month == 12
-                      else _date(cursor.year, cursor.month + 1, 1))
-        eom = next_month - _td(days=1)
-        while change_idx < len(changes) and changes[change_idx][0] <= eom:
-            current_rate = changes[change_idx][1]
-            change_idx += 1
-        if current_rate is not None:
-            out.append([_to_ms(cursor.isoformat()), current_rate])
-        cursor = next_month
-    return out
-
-
-def _boe_sanity_ok(monthly: list[list]) -> tuple[bool, str]:
-    """Reject obviously wrong outputs. Returns (ok, reason)."""
-    if not monthly:
-        return False, "no observations"
-    if len(monthly) < 10:
-        return False, f"only {len(monthly)} observations (need ≥10)"
-    last_ts, last_rate = monthly[-1]
-    if not (0 <= last_rate <= 25):
-        return False, f"latest rate {last_rate}% outside plausible 0-25 range"
-    from datetime import date as _date, datetime as _dt, timezone as _tz
-    last_date = _dt.fromtimestamp(last_ts / 1000, tz=_tz.utc).date()
-    age_days = (_date.today() - last_date).days
-    if age_days > 730:
-        return False, f"latest observation is {age_days} days old"
-    return True, ""
-
-
-def fetch_boe_bank_rate() -> list[list]:
-    """Resilient BoE Bank Rate fetcher. See module-top comments for design.
-
-    Tries three independent parsing strategies; first one that produces
-    sanity-passing data wins. All three would need to break before the
-    dashboard's BoE figure goes stale.
-    """
-    _boe_html_cache.clear()  # fresh fetch each call (idempotent within run)
-    strategies = (
-        ("strict-html", _boe_strategy_strict_html),
-        ("loose-html",  _boe_strategy_loose_html),
-        ("iadb-csv",    _boe_strategy_iadb_csv),
-    )
-    for name, fn in strategies:
-        try:
-            changes = fn()
-        except Exception as e:
-            log.warning("BoE strategy '%s' raised: %s", name, e)
-            continue
-        if not changes:
-            log.info("BoE strategy '%s' returned no data — trying next", name)
-            continue
-        monthly = _boe_forward_fill_monthly(changes)
-        ok, reason = _boe_sanity_ok(monthly)
-        if ok:
-            log.info("BoE Bank Rate: strategy '%s' → %d change points → %d monthly obs (current %.2f%%)",
-                     name, len(changes), len(monthly), monthly[-1][1])
-            return monthly
-        log.warning("BoE strategy '%s' parsed %d changes but failed sanity: %s",
-                    name, len(changes), reason)
-    log.error("All BoE Bank Rate strategies failed — keeping prior data if any.")
-    return []
 
 
 # ── ONS (Office for National Statistics) time series ──
 # Direct ONS data is typically 3+ months fresher than the OECD-aggregated
 # equivalents on FRED. Pattern: ons.gov.uk/{topic_path}/timeseries/{id}/{dataset}/data
 _ONS_MONTH = {'JAN':1,'FEB':2,'MAR':3,'APR':4,'MAY':5,'JUN':6,'JUL':7,'AUG':8,'SEP':9,'OCT':10,'NOV':11,'DEC':12}
+_ONS_META = {}
 
-def fetch_ons(series_id: str, dataset: str, topic_path: str) -> list[list]:
-    """Pull a monthly ONS time series. Returns [[ts_ms, value], ...]."""
-    url = f"https://www.ons.gov.uk/{topic_path}/timeseries/{series_id}/{dataset}/data"
+@lru_cache(maxsize=32)
+def fetch_ons(series_id: str, dataset: str, topic_path: str, frequency='m') -> list[list]:
+    """Preserve the publisher's reporting period and release metadata."""
+    uri = f"/{topic_path}/timeseries/{series_id.lower()}/{dataset.lower()}"
+    url = f"https://www.ons.gov.uk{uri}/data"
     try:
-        r = requests.get(url, timeout=30, headers={"Accept": "application/json"})
-        r.raise_for_status()
-        payload = r.json()
+        try:
+            payload = get(url, headers={'Accept': 'application/json'}).json()
+        except (requests.RequestException, ValueError):
+            payload = get('https://api.beta.ons.gov.uk/v1/data', params={'uri': uri}).json()
     except (requests.RequestException, ValueError) as e:
         log.warning("ONS %s failed: %s", series_id, e)
         return []
 
-    months = payload.get("months") or []
+    months = payload.get({'q': 'quarters', 'a': 'years'}.get(frequency, 'months')) or []
     out: list[list] = []
+    labels = {}
     for obs in months:
         date_str = (obs.get("date") or "").strip()
         val_str  = (obs.get("value") or "").strip()
         if not date_str or not val_str:
             continue
         parts = date_str.split()
-        if len(parts) != 2:
+        if len(parts) not in (1, 2):
             continue
         try:
             year = int(parts[0])
-            mnum = _ONS_MONTH.get(parts[1].upper()[:3])
+            mnum = (int(parts[1][1:]) - 1) * 3 + 1 if frequency == 'q' else 1 if frequency == 'a' else _ONS_MONTH.get(parts[1].upper()[:3])
             if not mnum:
                 continue
             val = float(val_str)
         except (ValueError, TypeError):
             continue
         iso = f"{year:04d}-{mnum:02d}-01"
-        out.append([_to_ms(iso), val])
+        timestamp = _to_ms(iso)
+        out.append([timestamp, val])
+        labels[timestamp] = obs.get('label', '')
     out.sort(key=lambda r: r[0])
+    if out:
+        desc = payload.get('description', {})
+        label = labels[out[-1][0]]
+        parts = label.split(' ', 1)
+        label = f'{parts[1].title()} {parts[0]}' if len(parts) == 2 else label
+        next_release = None
+        try:
+            next_release = datetime.strptime(desc.get('nextRelease', ''), '%d %B %Y').date().isoformat()
+        except ValueError:
+            pass
+        _ONS_META[(series_id, dataset, frequency)] = {
+            'period_label': label, 'published_at': desc.get('releaseDate'),
+            'next_release': next_release, 'source_url': f'https://www.ons.gov.uk{uri}',
+            'frequency': frequency, 'period_type': desc.get('monthLabelStyle', frequency),
+        }
     return out
 
 
@@ -406,7 +202,7 @@ def fetch_uk_hpi_region(region_name: str) -> list[list]:
             y -= 1
         url = f"https://publicdata.landregistry.gov.uk/market-trend-data/house-price-index-data/UK-HPI-full-file-{y}-{m:02d}.csv"
         try:
-            r = requests.get(url, timeout=120, stream=False,
+            r = get(url, timeout=120, stream=False,
                              headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
             if r.status_code == 200 and len(r.content) > 1_000_000:
                 csv_text = r.content.decode("utf-8", errors="replace")
@@ -462,7 +258,7 @@ def fetch_uk_fuel(column: str) -> list[list]:
 
     page_url = "https://www.gov.uk/government/statistics/weekly-road-fuel-prices"
     try:
-        r = requests.get(page_url, timeout=30,
+        r = get(page_url, timeout=30,
                          headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
         r.raise_for_status()
     except requests.RequestException as e:
@@ -477,7 +273,7 @@ def fetch_uk_fuel(column: str) -> list[list]:
 
     csv_url = m.group(0)
     try:
-        r2 = requests.get(csv_url, timeout=30,
+        r2 = get(csv_url, timeout=30,
                           headers={"User-Agent": "Mozilla/5.0 MacroOps/1.0"})
         r2.raise_for_status()
     except requests.RequestException as e:
@@ -485,7 +281,7 @@ def fetch_uk_fuel(column: str) -> list[list]:
         return []
 
     text = r2.content.decode("utf-8-sig", errors="replace")
-    rows = [ln.split(",") for ln in text.splitlines() if ln.strip()]
+    rows = list(csv.reader(io.StringIO(text)))
     if len(rows) < 2:
         return []
 
@@ -521,8 +317,12 @@ def fetch_uk_fuel(column: str) -> list[list]:
     return _UK_FUEL_CACHE.get(column, [])
 
 
+_YAHOO_META = {}
+
+
 def fetch_yahoo(ticker: str) -> list[list]:
-    """Pull a ticker from Yahoo Finance via yfinance and downsample to month-end."""
+    """Keep daily observations at their real trading dates, including history."""
+    _YAHOO_META.pop(ticker, None)
     try:
         import yfinance as yf  # imported lazily so script still loads without it
     except ImportError:
@@ -530,19 +330,25 @@ def fetch_yahoo(ticker: str) -> list[list]:
         return []
 
     try:
-        df = yf.download(
-            ticker,
-            start=START_DATE,
-            progress=False,
-            auto_adjust=True,
-            threads=False,
-        )
+        instrument = yf.Ticker(ticker)
+        df = instrument.history(period='max', interval='1d', auto_adjust=True, timeout=30, raise_errors=True)
     except Exception as e:  # network or yfinance internal
         log.warning("Yahoo %s failed: %s", ticker, e)
         return []
 
     if df is None or df.empty:
         return []
+
+    # Yahoo's long-history cache can lag its recent-price endpoint by a day.
+    # Refresh the overlapping daily tail, keeping provider revisions.
+    try:
+        import pandas as pd
+        recent = instrument.history(period='1mo', interval='1d', auto_adjust=True, timeout=30, raise_errors=True)
+        if recent is not None and not recent.empty:
+            df = pd.concat([df, recent])
+            df = df[~df.index.duplicated(keep='last')].sort_index()
+    except Exception as exc:
+        log.warning('Yahoo recent tail unavailable for %s: %s', ticker, type(exc).__name__)
 
     # yfinance may return MultiIndex columns when threads/multi-ticker is involved.
     if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
@@ -553,16 +359,31 @@ def fetch_yahoo(ticker: str) -> list[list]:
     if s.empty:
         return []
 
-    # Month-end resample for compact long-term storage.
-    monthly = s.resample("ME").last().dropna()
     out: list[list] = []
-    for ts, val in monthly.items():
+    for ts, val in s.items():
         try:
             v = float(val)
         except (TypeError, ValueError):
             continue
-        ts_ms = int(ts.tz_localize("UTC").timestamp() * 1000) if ts.tzinfo is None else int(ts.timestamp() * 1000)
-        out.append([ts_ms, v])
+        # A daily bar belongs to the exchange's local trading date.
+        ts_ms = _to_ms(ts.strftime('%Y-%m-%d'))
+        if math.isfinite(v):
+            out.append([ts_ms, v])
+    if len(out) < 365:
+        log.warning('Yahoo %s returned only %d daily observations; rejecting truncated history', ticker, len(out))
+        return []
+    try:
+        meta = instrument.get_history_metadata()
+        observed = datetime.fromtimestamp(meta['regularMarketTime'], timezone.utc)
+        trading_day = observed.astimezone(ZoneInfo(meta['exchangeTimezoneName'])).date()
+        timestamp = _to_ms(trading_day.isoformat())
+        price = float(meta['regularMarketPrice'])
+        if meta.get('symbol') == ticker and timestamp > out[-1][0] and math.isfinite(price) and observed <= datetime.now(timezone.utc) + timedelta(minutes=5):
+            # A timestamped exchange quote can precede Yahoo's daily-bar cache.
+            out.append([timestamp, price])
+            _YAHOO_META[ticker] = {'latest_quote_at': observed.isoformat(timespec='seconds')}
+    except Exception as exc:
+        log.debug('Yahoo quote metadata unavailable for %s: %s', ticker, type(exc).__name__)
     return out
 
 
@@ -570,27 +391,7 @@ def fetch_yahoo(ticker: str) -> list[list]:
 # Transforms & stats
 # ──────────────────────────────────────────────────────────────────────────
 def apply_transform(data: list[list], transform: str) -> list[list]:
-    """Apply YoY percent change or other transforms."""
-    if transform == "yoy_pct":
-        # Pair every observation with the one ~12 periods earlier (works for monthly).
-        if len(data) < 13:
-            return []
-        out = []
-        # For monthly data, lag 12. For quarterly, lag 4. Inferred from cadence.
-        # Median months between consecutive points:
-        if len(data) >= 2:
-            avg_gap_days = (data[-1][0] - data[0][0]) / (1000 * 86400 * (len(data) - 1))
-            lag = 12 if avg_gap_days < 45 else (4 if avg_gap_days < 100 else 1)
-        else:
-            lag = 12
-        for i in range(lag, len(data)):
-            prev = data[i - lag][1]
-            if prev == 0:
-                continue
-            pct = (data[i][1] / prev - 1.0) * 100.0
-            out.append([data[i][0], round(pct, 4)])
-        return out
-    return data
+    return yoy(data) if transform == 'yoy_pct' else data
 
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
@@ -600,109 +401,82 @@ def _date_str(ms: int) -> str:
     return (_EPOCH + timedelta(milliseconds=ms)).strftime("%Y-%m-%d")
 
 
-def compute_stats(data: list[list]) -> dict[str, Any]:
-    """Latest value plus 1m / 1y / 5y / max changes."""
-    if not data:
-        return {}
-    latest_ts, latest_val = data[-1]
-    stats: dict[str, Any] = {
-        "last_value": round(latest_val, 4),
-        "last_date": _date_str(latest_ts),
-        "n_points": len(data),
-    }
-
-    def _change(periods_back: int) -> float | None:
-        if len(data) <= periods_back:
-            return None
-        prev = data[-1 - periods_back][1]
-        if prev == 0:
-            return None
-        return round((latest_val / prev - 1.0) * 100.0, 3)
-
-    stats["chg_1m_pct"] = _change(1)
-    stats["chg_3m_pct"] = _change(3)
-    stats["chg_1y_pct"] = _change(12)
-    stats["chg_5y_pct"] = _change(60)
-    if len(data) > 1:
-        first = data[0][1]
-        if first:
-            stats["chg_max_pct"] = round((latest_val / first - 1.0) * 100.0, 2)
-
-    vals = [d[1] for d in data]
-    stats["min"] = round(min(vals), 4)
-    stats["max"] = round(max(vals), 4)
-    stats["min_date"] = _date_str(data[vals.index(min(vals))][0])
-    stats["max_date"] = _date_str(data[vals.index(max(vals))][0])
-    return stats
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # Main loop
 # ──────────────────────────────────────────────────────────────────────────
-def fetch_one(s: dict) -> dict | None:
+def fetch_one(s: dict, previous: dict | None = None) -> dict | None:
     """Fetch a single series and return the JSON-ready dict, or None on failure."""
-    sid = s["id"]
-    data: list[list] = []
-    source = None
+    sid = s['id']
+    providers = []
+    def ons_result():
+        dataset, freq = s.get('ons_dataset', 'lms'), s.get('freq', 'm')
+        data = fetch_ons(s['ons'], dataset, s['ons_path'], freq)
+        return data, {'source': f"ONS ({s['ons']})", **_ONS_META.get((s['ons'], dataset, freq), {})}
 
-    if s.get("boe_scrape"):
-        log.info("  → %s via BoE Bank Rate scrape", sid)
-        data = fetch_boe_bank_rate()
-        if data:
-            source = "Bank of England — Bank Rate (IADB)"
+    if s.get('bis_cpi'):
+        providers.append(('bis', lambda: bis_cpi(s['bis_cpi'])))
+    if s.get('bis_policy'):
+        providers.append(('bis', lambda: bis_policy(s['bis_policy'])))
+    if s.get('boe_money'):
+        providers.append(('boe', lambda: boe_money(s['boe_money'])))
+    if s.get('ecb_money'):
+        providers.append(('ecb', ecb_money))
+    if s.get('eurostat'):
+        providers.append(('eurostat', euro_unemployment))
+    if s.get('ons'):
+        providers.append(('ons', ons_result))
+    if s.get('yahoo'):
+        providers.append(('yahoo', lambda: (fetch_yahoo(s['yahoo']), {'source': f"Yahoo Finance ({s['yahoo']})", 'frequency': 'd', 'source_url': f"https://finance.yahoo.com/quote/{s['yahoo']}/history/", **_YAHOO_META.get(s['yahoo'], {})})))
+    if s.get('fred'):
+        providers.append(('fred', lambda: (fetch_fred(s['fred'], s.get('freq')), {'source': f"FRED ({s['fred']})", 'source_url': f"https://fred.stlouisfed.org/series/{s['fred']}"})))
+    if s.get('uk_fuel'):
+        providers.append(('uk_fuel', lambda: (fetch_uk_fuel(s['uk_fuel']), {'source': 'gov.uk DESNZ weekly road fuel prices', 'frequency': 'w', 'source_url': 'https://www.gov.uk/government/statistics/weekly-road-fuel-prices'})))
+    if s.get('uk_hpi'):
+        providers.append(('land_registry', lambda: (fetch_uk_hpi_region(s['uk_hpi']), {'source': 'HM Land Registry UK House Price Index', 'frequency': 'm', 'source_url': 'https://www.gov.uk/government/collections/uk-house-price-index-reports'})))
 
-    if (not data) and s.get("ons"):
-        log.info("  → %s via ONS (%s)", sid, s["ons"])
-        data = fetch_ons(s["ons"], s.get("ons_dataset", "lms"), s.get("ons_path", "employmentandlabourmarket"))
-        if data:
-            source = f"ONS ({s['ons']})"
-
-    if (not data) and s.get("yahoo"):
-        log.info("  → %s via Yahoo (%s)", sid, s["yahoo"])
-        data = fetch_yahoo(s["yahoo"])
-        if data:
-            source = f"Yahoo Finance ({s['yahoo']})"
-
-    if (not data) and s.get("fred"):
-        log.info("  → %s via FRED (%s)", sid, s["fred"])
-        data = fetch_fred(s["fred"], frequency=s.get("freq"))
-        if data:
-            source = f"FRED ({s['fred']})"
-
-    if (not data) and s.get("uk_fuel"):
-        log.info("  → %s via UK gov.uk fuel CSV", sid)
-        data = fetch_uk_fuel(s["uk_fuel"])
-        if data:
-            source = "gov.uk DESNZ weekly road fuel prices"
-
-    if (not data) and s.get("uk_hpi"):
-        log.info("  → %s via UK HPI (%s)", sid, s["uk_hpi"])
-        data = fetch_uk_hpi_region(s["uk_hpi"])
-        if data:
-            source = "HM Land Registry UK House Price Index"
-
-    if not data:
-        log.error("  ✗ no data for %s", sid)
-        return None
-
-    if s.get("scale"):
-        data = [[ts, v * s["scale"]] for ts, v in data]
-    if s.get("transform"):
-        data = apply_transform(data, s["transform"])
-        if not data:
-            log.error("  ✗ transform produced empty series for %s", sid)
-            return None
-
-    return {
-        "id": sid,
-        "name": s["name"],
-        "region": s.get("region"),
-        "unit": s.get("unit"),
-        "note": s.get("note"),
-        "source": source,
-        "stats": compute_stats(data),
-        "data": data,
-    }
+    best = None
+    for method, provider in providers:
+        try:
+            log.info('  %s via %s', sid, method)
+            raw, meta = provider()
+            data = validate_points(raw)
+            scale = s.get(f'{method}_scale', s.get('scale', 1))
+            data = [[ts, value * scale] for ts, value in data]
+            transform = s.get(f'{method}_transform', s.get('transform'))
+            if transform:
+                data = validate_points(apply_transform(data, transform))
+            if len(data) < s.get('min_points', 2):
+                raise ValueError('Insufficient history')
+            if previous and previous.get('schema_version') == SCHEMA_VERSION and previous.get('history_version', 1) == s.get('history_version', 1):
+                old = previous.get('data', [])
+                if old and data[-1][0] < old[-1][0]:
+                    raise ValueError('Provider returned an older endpoint than the stored data')
+                if old and data[0][0] > old[0][0] + 100 * 86400000 and len(data) < len(old) * 0.8:
+                    raise ValueError('Provider truncated the stored history')
+            frequency = meta.get('frequency') or s.get('freq') or frequency_of(data)
+            checked = datetime.now(timezone.utc).isoformat(timespec='seconds')
+            result = {
+                'id': sid, 'name': s['name'], 'region': s.get('region'), 'unit': s.get('unit'), 'note': s.get('note'),
+                **meta, 'method': method, 'frequency': frequency, 'schema_version': SCHEMA_VERSION,
+                'history_version': s.get('history_version', 1),
+                'stats': compute_stats(data, frequency), 'data': data,
+                'period_label': meta.get('period_label') or period_label(data, frequency),
+                'last_checked': checked, 'last_success': checked, 'fetch_status': 'ok',
+                'archived': bool(s.get('archived')), 'max_age_days': s.get('max_age_days', 150 if meta.get('period_type') == 'three month average' else {'d': 7, 'w': 21, 'm': 100, 'q': 230, 'a': 800}[frequency]),
+            }
+            result['freshness'] = freshness(result, s)
+            if not best or data[-1][0] > best['data'][-1][0]:
+                best = result
+            if result['freshness'] in ('current', 'archived'):
+                return result
+            log.warning('  %s: source returned an overdue observation (%s)', sid, result['period_label'])
+        except Exception as exc:
+            # Network errors may contain credential-bearing URLs; log only their type.
+            reason = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+            log.warning('  %s via %s rejected: %s', sid, method, reason)
+    return best
 
 
 def load_existing(path: Path) -> dict:
@@ -717,7 +491,8 @@ def load_existing(path: Path) -> dict:
 def run() -> dict:
     """Fetch everything and write JSON files. Returns the manifest dict."""
     started = datetime.now(timezone.utc)
-    section_status: dict[str, dict[str, Any]] = {}
+    old_manifest = load_existing(DATA_DIR / 'manifest.json')
+    section_status = {k: {field: v.get(field, 0) for field in ('ok', 'fail', 'stale', 'archived')} for k, v in old_manifest.get('sections', {}).items()}
     total_ok = 0
     total_fail = 0
 
@@ -739,7 +514,7 @@ def run() -> dict:
         ok, fail = 0, 0
         for s in section_meta["series"]:
             try:
-                res = fetch_one(s)
+                res = fetch_one(s, existing_series.get(s['id']))
             except Exception as e:  # pragma: no cover
                 log.exception("Unhandled error on %s: %s", s.get("id"), e)
                 res = None
@@ -751,10 +526,22 @@ def run() -> dict:
                 prev = existing_series.get(s["id"])
                 if prev:
                     log.info("  ↺ keeping previous data for %s", s["id"])
-                    new_series[s["id"]] = prev
+                    prev = dict(prev)
+                    # Legacy month-end bars in the future are not real observations.
+                    valid = [p for p in prev.get('data', []) if _date_str(p[0]) <= started.date().isoformat()]
+                    if valid:
+                        prev['data'] = validate_points(valid)
+                        prev['stats'] = compute_stats(prev['data'], prev.get('frequency'))
+                        prev['last_checked'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
+                        prev['last_success'] = prev.get('last_success')
+                        prev['fetch_status'] = 'retained'
+                        prev['freshness'] = freshness(prev, s)
+                        new_series[s['id']] = prev
                 fail += 1
 
-        section_status[section_key] = {"ok": ok, "fail": fail}
+        stale = sum(v.get('freshness') in ('stale', 'invalid', 'missing') for v in new_series.values())
+        archived = sum(v.get('archived', False) for v in new_series.values())
+        section_status[section_key] = {"ok": ok, "fail": fail, 'stale': stale, 'archived': archived}
         total_ok += ok
         total_fail += fail
 
@@ -771,7 +558,7 @@ def run() -> dict:
             "series": new_series,
             "order": [s["id"] for s in section_meta["series"]],
         }
-        out_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        write_json(out_path, payload)
         log.info("  wrote %s  (%d ok, %d fail)", out_path.name, ok, fail)
 
     # Events file
@@ -782,9 +569,7 @@ def run() -> dict:
         },
         "events": sorted(EVENTS, key=lambda e: e["date"]),
     }
-    (DATA_DIR / "events.json").write_text(
-        json.dumps(events_payload, separators=(",", ":")), encoding="utf-8"
-    )
+    write_json(DATA_DIR / 'events.json', events_payload)
     log.info("Wrote events.json (%d events)", len(EVENTS))
 
     # Manifest
@@ -802,11 +587,10 @@ def run() -> dict:
             }
             for key in SECTIONS.keys()
         },
-        "totals": {"ok": total_ok, "fail": total_fail},
+        'schema_version': SCHEMA_VERSION,
+        "totals": {field: sum(x.get(field, 0) for x in section_status.values()) for field in ('ok', 'fail', 'stale', 'archived')},
     }
-    (DATA_DIR / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    write_json(DATA_DIR / 'manifest.json', manifest, indent=2)
     log.info(
         "DONE in %ss — %d ok, %d fail",
         manifest["duration_sec"],

@@ -35,11 +35,14 @@
   function setRuntimeStatus(id, ok) {
     const slot = runtimeStatus[id];
     if (!slot) return;
-    if (ok) {
+    slot.last_attempt = new Date().toISOString();
+    if (ok === 'embedded') {
+      slot.status = 'embedded';
+    } else if (ok === true) {
       slot.status = 'ok';
       slot.last_ok = new Date().toISOString();
-    } else if (slot.status !== 'ok') {
-      slot.status = 'error';
+    } else {
+      slot.status = slot.last_ok ? 'warning' : 'error';
     }
     render();
   }
@@ -51,9 +54,12 @@
     const sources = (healthData.sources || []).map(s => {
       if (s.runtime) {
         const rt = runtimeStatus[s.id];
-        return { ...s, status: rt ? rt.status : 'pending', last_ok: rt?.last_ok };
+        const status = rt?.status === 'ok' && Date.now() - Date.parse(rt.last_ok) > 120000 ? 'warning' : rt?.status || 'pending';
+        return { ...s, status, last_ok: rt?.last_ok };
       }
-      return s;
+      const limit = s.id === 'news' ? 3 : 36;
+      const overdue = !s.last_fetch || Date.now() - Date.parse(s.last_fetch) > limit * 3600000;
+      return overdue && s.status === 'ok' ? { ...s, status: 'warning' } : s;
     });
 
     // Header summary
@@ -88,7 +94,7 @@
     const dotClass = `hc-dot hc-dot-${s.status || 'pending'}`;
     const counts = (s.expected != null && s.delivered != null)
       ? `${s.delivered}/${s.expected}`
-      : (s.runtime ? 'live' : '—');
+      : (s.runtime ? (s.status === 'ok' ? 'online' : s.status === 'embedded' ? 'embedded' : 'optional') : '—');
     const age = relativeTime(s.last_fetch || s.last_ok);
     return `
       <div class="hc-row" data-id="${s.id}">
@@ -105,6 +111,7 @@
           ${s.latest_data ? `<div class="hc-detail-line"><span class="hc-key">Data thru</span><span>${escapeHtml(s.latest_data)}</span></div>` : ''}
           ${s.url ? `<div class="hc-detail-line"><span class="hc-key">URL</span><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(hostOf(s.url))}</a></div>` : ''}
           ${renderSubSources(s.sub_sources)}
+          ${s.issues?.length ? '<ul class="hc-issues">' + s.issues.map(issue => '<li>' + escapeHtml(issue.name) + ': ' + escapeHtml(issue.reason) + (issue.period ? ' · ' + escapeHtml(issue.period) : '') + '</li>').join('') + '</ul>' : ''}
           <div class="hc-notes">${escapeHtml(s.notes || '')}</div>
         </div>
       </div>
@@ -121,7 +128,7 @@
   }
 
   function labelForStatus(s) {
-    return ({ ok: 'Healthy', warning: 'Warning', error: 'Error', pending: 'Pending' }[s]) || 'Unknown';
+    return ({ ok: 'Healthy', warning: 'Warning', error: 'Unavailable', pending: 'Not requested', embedded: 'Embedded; quote status unverified' }[s]) || 'Unknown';
   }
 
   function relativeTime(iso) {

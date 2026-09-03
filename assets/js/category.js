@@ -31,6 +31,8 @@
     const grid = document.getElementById('matrix-grid');
     if (!grid) return;
     const tpl = document.getElementById('tpl-category');
+    panelHandles.forEach(handle => { handle.chart?.dispose(); handle.sparks?.forEach(spark => spark?.dispose()); });
+    panelHandles.clear();
     grid.innerHTML = '';
 
     Object.entries(manifest.sections).forEach(([key, meta]) => {
@@ -59,6 +61,12 @@
         if (h?.chart) setTimeout(() => h.chart.resize(), 50);
       });
       panel.querySelector('.cat-tv').addEventListener('click', () => sendToHero(key));
+      panel.querySelectorAll('[data-card-range]').forEach(button => {
+        button.addEventListener('click', () => {
+          panelHandles.get(key)?.chart?.setRange(button.dataset.cardRange);
+          panel.querySelectorAll('[data-card-range]').forEach(b => b.classList.toggle('is-active', b === button));
+        });
+      });
       panel.querySelector('.cat-export').addEventListener('click', (ev) => {
         ev.stopPropagation();
         exportFocusedSeries(key, ev.currentTarget);
@@ -93,27 +101,30 @@
     const stats = series.stats || {};
     panel.querySelector('.cat-focus-value').textContent = global.ChartKit.formatNumber(stats.last_value, series.unit);
     panel.querySelector('.cat-focus-unit').textContent = series.unit || '';
-    const chg = stats.chg_1y_pct;
+    const { value: chg, unit: changeUnit } = global.ChartKit.annualChange(series);
     const chgEl = panel.querySelector('.cat-focus-change');
     if (chg == null) {
       chgEl.textContent = ''; chgEl.className = 'cat-focus-change';
     } else {
       const cls = chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'zero';
       const arrow = chg > 0 ? '▲' : chg < 0 ? '▼' : '·';
-      chgEl.textContent = `${arrow} ${Math.abs(chg).toFixed(2)}% 1Y`;
+      chgEl.textContent = `${arrow} ${Math.abs(chg).toFixed(2)} ${changeUnit} 1Y`;
       chgEl.className = `cat-focus-change ${cls}`;
     }
-    const asOf = formatAsOf(stats.last_date);
-    panel.querySelector('.cat-focus-source').textContent =
-      asOf ? `${series.source || ''} · as of ${asOf}` : (series.source || '');
+    const source = panel.querySelector('.cat-focus-source');
+    source.textContent = global.ChartKit.sourceSummary(series);
+    source.title = series.note || '';
+    source.classList.toggle('is-warning', !!global.ChartKit.freshnessState(series));
 
     // Chart
     const chartEl = panel.querySelector('.cat-focus-chart');
-    chartEl.innerHTML = '';
     if (handle.chart) handle.chart.dispose();
+    chartEl.innerHTML = '';
+    chartEl.dataset.seriesKey = key + '/' + sid;
     const chart = global.ChartKit.createCardChart(chartEl, series, { range: '5Y' });
     handle.chart = chart;
     handle.focusSid = sid;
+    panel.querySelectorAll('[data-card-range]').forEach(b => b.classList.toggle('is-active', b.dataset.cardRange === '5Y'));
   }
 
   function renderCarousel(key, payload, order, activeSid) {
@@ -121,6 +132,8 @@
     if (!panel) return;
     const car = panel.querySelector('.cat-carousel');
     car.innerHTML = '';
+    const handle = panelHandles.get(key);
+    handle.sparks = [];
     order.forEach(sid => {
       const series = payload.series[sid];
       if (!series) return;
@@ -128,7 +141,7 @@
       chip.className = 'chip' + (sid === activeSid ? ' is-active' : '');
       chip.dataset.sid = sid;
       const stats = series.stats || {};
-      const chg = stats.chg_1y_pct;
+      const { value: chg, unit: changeUnit } = global.ChartKit.annualChange(series);
       const chgCls = chg == null ? 'zero' : chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'zero';
       const arrow = chg == null ? '·' : chg > 0 ? '▲' : chg < 0 ? '▼' : '·';
       chip.innerHTML = `
@@ -136,7 +149,7 @@
         <span class="chip-spark"></span>
         <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;">
           <span class="chip-val">${global.ChartKit.formatNumber(stats.last_value, series.unit)}</span>
-          <span class="chip-chg ${chgCls}">${arrow} ${chg == null ? '—' : Math.abs(chg).toFixed(1) + '%'}</span>
+          <span class="chip-chg ${chgCls}">${arrow} ${chg == null ? '—' : Math.abs(chg).toFixed(1) + ' ' + changeUnit}</span>
         </div>
       `;
       chip.addEventListener('click', () => {
@@ -146,7 +159,8 @@
       });
       car.appendChild(chip);
       const sp = chip.querySelector('.chip-spark');
-      global.ChartKit.createSparkline(sp, series, { range: '1Y' });
+      chip.title = global.ChartKit.sourceSummary(series);
+      handle.sparks.push(global.ChartKit.createSparkline(sp, series, { range: '1Y' }));
     });
   }
 
@@ -202,22 +216,9 @@
     const handle = panelHandles.get(key);
     if (!handle || !handle.focusSid) return;
     const sid = handle.focusSid;
-    // Look up corresponding TV symbol if any
-    const sel = document.getElementById('hero-symbol');
-    if (!sel) return;
-    // Try to find an option with a value mapped to this sid (via hero.js's TV_SYMBOL_TO_LOCAL — duplicated here for the sectionToSid case)
-    const seriesName = handle.sectionPayload.series[sid]?.name || sid;
-    // Best effort: find an option label that matches the series name
-    for (const opt of sel.options) {
-      if (opt.textContent && opt.textContent.toLowerCase().includes(seriesName.toLowerCase().split(' ')[0])) {
-        sel.value = opt.value;
-        if (global.Hero) global.Hero.setSymbol(opt.value);
-        document.querySelector('.hero-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
-      }
-    }
-    // Fallback: just scroll to hero
-    document.querySelector('.hero-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const series = handle.sectionPayload.series[sid];
+    global.Hero?.loadLocal(key, sid, series);
+    document.querySelector('.hero-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function collapseAll() {
@@ -234,16 +235,6 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  /** "2026-02-01" → "Feb 2026" (or "29 May 2026" for recent values). */
-  function formatAsOf(iso) {
-    if (!iso) return '';
-    const d = new Date(iso + 'T00:00:00Z');
-    if (isNaN(d)) return '';
-    const ageDays = (Date.now() - d.getTime()) / 86_400_000;
-    return ageDays < 90
-      ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-      : d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-  }
 
   global.CategoryMatrix = { init, renderFocus, collapseAll, expandAll };
 })(window);

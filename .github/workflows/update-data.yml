@@ -18,10 +18,12 @@ on:
     branches: [main]
     paths:
       - "scripts/**"
+      - "tests/**"
       - ".github/workflows/update-data.yml"
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: refresh-data
@@ -48,6 +50,16 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Regression tests
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py'
+          node --test tests/frontend.test.cjs
 
       - name: Decide fetch mode
         id: mode
@@ -78,11 +90,12 @@ jobs:
 
       - name: Rebuild economic calendar
         run: python scripts/fetch_calendar.py
-        continue-on-error: true
 
       - name: Rebuild data-source health snapshot
         run: python scripts/build_health.py
-        continue-on-error: true
+
+      - name: Validate generated artifacts
+        run: python scripts/validate_data.py
 
       - name: Commit refreshed data
         run: |
@@ -94,9 +107,49 @@ jobs:
           else
             ts=$(date -u +"%Y-%m-%d %H:%MZ")
             git commit -m "chore(data): scheduled refresh ${ts} [${{ steps.mode.outputs.mode }}]"
-            # Rebase in case main moved while this runner was fetching data.
-            # During rebase, "theirs" is this generated-data commit.
-            git fetch origin main
-            git rebase -X theirs origin/main
-            git push origin HEAD:main
+            for attempt in 1 2 3; do
+              git fetch origin main
+              # During rebase, "theirs" is this generated-data-only commit.
+              if ! git rebase -X theirs origin/main; then
+                git rebase --abort
+                exit 1
+              fi
+              python scripts/validate_data.py
+              if git push origin HEAD:main; then
+                break
+              fi
+              if [ "$attempt" = "3" ]; then
+                echo "::error::main kept changing; generated data was not pushed."
+                exit 1
+              fi
+              sleep 5
+            done
           fi
+
+      - name: Publish updated GitHub Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # GITHUB_TOKEN pushes do not automatically trigger branch-based Pages.
+          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
+          expected=$(git rev-parse HEAD)
+          for attempt in $(seq 1 20); do
+            sleep 15
+            build=$(gh api "repos/$GITHUB_REPOSITORY/pages/builds/latest")
+            status=$(jq -r .status <<< "$build")
+            commit=$(jq -r .commit <<< "$build")
+            if [ "$commit" = "$expected" ] && [ "$status" = "built" ]; then
+              echo "Published Pages at $expected."
+              exit 0
+            fi
+            if [ "$commit" = "$expected" ] && [ "$status" = "errored" ]; then
+              echo "::error::GitHub Pages build failed."
+              exit 1
+            fi
+          done
+          echo "::error::Timed out waiting for the updated Pages build."
+          exit 1
+
+      - name: Report source health
+        if: always()
+        run: python scripts/validate_data.py --report

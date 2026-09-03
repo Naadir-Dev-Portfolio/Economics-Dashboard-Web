@@ -18,10 +18,13 @@
     events: [],
     view: 'month',                              // default to month view
     cursor: new Date(),                          // current month being viewed
+    meta: {},
+    dayFilter: null,
   };
 
   function init(calendar) {
-    state.events = (calendar && calendar.events) || [];
+    state.events = (calendar?.events || []).filter(e => e.verified_at && ['confirmed', 'provisional'].includes(e.status));
+    state.meta = calendar?.meta || {};
 
     // Open triggers
     document.getElementById('btn-open-calendar')?.addEventListener('click', open);
@@ -35,6 +38,7 @@
         document.querySelectorAll('.cv-btn').forEach(b => b.classList.remove('is-active'));
         btn.classList.add('is-active');
         state.view = btn.dataset.view;
+        state.dayFilter = null;
         render();
       });
     });
@@ -42,7 +46,7 @@
     // Month nav
     document.getElementById('cal-prev')?.addEventListener('click', () => shiftMonth(-1));
     document.getElementById('cal-next')?.addEventListener('click', () => shiftMonth(+1));
-    document.getElementById('cal-today')?.addEventListener('click', () => { state.cursor = new Date(); render(); });
+    document.getElementById('cal-today')?.addEventListener('click', () => { state.cursor = new Date(); state.dayFilter = null; render(); });
 
     bindModalClose('modal-calendar');
     bindModalClose('modal-event-add');
@@ -61,10 +65,12 @@
     if (!modal) return;
     modal.hidden = false;
     state.cursor = new Date();
+    state.dayFilter = null;
     render();
   }
 
   function shiftMonth(delta) {
+    state.dayFilter = null;
     state.cursor = new Date(state.cursor.getFullYear(), state.cursor.getMonth() + delta, 1);
     render();
   }
@@ -73,8 +79,17 @@
     const body = document.getElementById('calendar-body');
     if (!body) return;
     updateMonthLabel();
+    const sources = Object.values(state.meta.sources || {});
+    const cached = sources.filter(s => s.status === 'cached').length;
+    const unavailable = sources.filter(s => s.status === 'unavailable').length;
+    document.getElementById('calendar-status').textContent = [
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      sources.length + ' official calendars',
+      cached ? cached + ' using verified cached dates' : '',
+      unavailable ? unavailable + ' unavailable' : '',
+    ].filter(Boolean).join(' · ');
     if (!state.events.length) {
-      body.innerHTML = '<div class="modal-loading">› no events — run scripts/fetch_calendar.py</div>';
+      body.innerHTML = '<div class="modal-loading">No verified release dates available.</div>';
       return;
     }
     if (state.view === 'list') renderList(body);
@@ -88,21 +103,21 @@
 
   // ─────────────────────────────────────────────────────── LIST view
   function renderList(body) {
-    const now = Date.now();
-    const future = state.events.filter(e => new Date(e.datetime).getTime() >= now - 3_600_000)
+    const month = localDay(state.cursor).slice(0, 7);
+    const future = state.events.filter(e => state.dayFilter ? localDay(e.datetime) === state.dayFilter : localDay(e.datetime).startsWith(month))
                                .sort((a, b) => a.datetime.localeCompare(b.datetime));
     if (!future.length) {
-      body.innerHTML = '<div class="modal-loading">› no upcoming events</div>';
+      body.innerHTML = '<div class="modal-loading">No published releases in this month.</div>';
       return;
     }
     const groups = {};
     future.forEach(e => {
-      const d = e.datetime.slice(0, 10);
+      const d = localDay(e.datetime);
       (groups[d] = groups[d] || []).push(e);
     });
     const out = ['<div class="cal-list">'];
     Object.keys(groups).sort().forEach(day => {
-      const human = new Date(day + 'T00:00:00Z').toLocaleDateString('en-GB', {
+      const human = new Date(day + 'T00:00:00').toLocaleDateString('en-GB', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
       });
       const rel = relativeDay(day);
@@ -117,7 +132,7 @@
           <div class="cal-row-region">${e.region}</div>
           <div>
             <div class="cal-row-title">${escapeHtml(e.title)}</div>
-            <div class="cal-row-source">${escapeHtml(e.source || '')}</div>
+            <div class="cal-row-source">${escapeHtml(e.source || '')} · ${escapeHtml(verificationLabel(e))}</div>
           </div>
           <div class="cal-row-add">+ ADD</div>
         </div>`);
@@ -132,8 +147,8 @@
   }
 
   function relativeDay(iso) {
-    const t = new Date(iso + 'T12:00:00Z').getTime();
-    const days = Math.round((t - Date.now()) / 86_400_000);
+    const days = Math.round((Date.parse(iso) - Date.parse(localDay(new Date()))) / 86_400_000);
+    if (days < 0) return 'PAST';
     if (days === 0) return 'TODAY';
     if (days === 1) return 'TOMORROW';
     if (days < 7)   return `in ${days} days`;
@@ -159,13 +174,13 @@
 
     const eventsByDay = {};
     state.events.forEach(e => {
-      const k = e.datetime.slice(0, 10);
+      const k = localDay(e.datetime);
       (eventsByDay[k] = eventsByDay[k] || []).push(e);
     });
 
     const heads = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
       .map(d => `<div class="cal-month-head">${d}</div>`).join('');
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = localDay(new Date());
     const cells = days.map(d => {
       const iso = d.toISOString().slice(0, 10);
       const inMonth = d.getUTCMonth() === month;
@@ -176,9 +191,9 @@
         const eid = encodeURIComponent(e.id);
         const time = new Date(e.datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
         const tag = e.tag || 'other';
-        return `<span class="cm-evt tag-${tag}" data-event-id="${eid}" title="${escapeHtml(e.title)} · ${time}">
+        return `<span class="cm-evt tag-${tag}${e.status === 'provisional' ? ' is-warning' : ''}" data-event-id="${eid}" title="${escapeHtml(e.title)} · ${time} · ${escapeHtml(verificationLabel(e))}">
           <span class="cm-evt-time">${time}</span>
-          <span class="cm-evt-title">${escapeHtml(e.title)}</span>
+          <span class="cm-evt-title">${escapeHtml(e.title)}${e.status === 'provisional' ? ' (provisional)' : ''}</span>
         </span>`;
       }).join('');
       const more = evts.length > 3 ? `<span class="cm-evt cm-evt-more" data-day="${iso}">+${evts.length-3} more</span>` : '';
@@ -202,12 +217,10 @@
     body.querySelectorAll('.cm-evt-more').forEach(el => {
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        // Show all events for that day via the list view filtered to that date.
-        const day = el.dataset.day;
-        const dayEvents = state.events.filter(e => e.datetime.slice(0,10) === day);
-        if (!dayEvents.length) return;
-        // Just open the first one — the list of the day already shows in the cell.
-        openAddModal(dayEvents[0]);
+        state.dayFilter = el.dataset.day;
+        state.view = 'list';
+        document.querySelectorAll('.cv-btn').forEach(b => b.classList.toggle('is-active', b.dataset.view === 'list'));
+        render();
       });
     });
   }
@@ -225,21 +238,23 @@
     document.getElementById('evadd-when').textContent =
       dt.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       + ' · ' + Intl.DateTimeFormat().resolvedOptions().timeZone;
-    document.getElementById('evadd-desc').textContent = event.description || '';
+    const details = (event.description || '') + '\n' + verificationLabel(event) + '\nVerified: ' + event.verified_at.slice(0, 10) + '\nSource: ' + (event.source_url || '');
+    const exportTitle = event.title + (event.status === 'provisional' ? ' (provisional)' : '');
+    document.getElementById('evadd-desc').textContent = details;
 
     const fmt = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
     const gcalUrl = 'https://www.google.com/calendar/render?action=TEMPLATE'
-      + '&text=' + encodeURIComponent(event.title)
+      + '&text=' + encodeURIComponent(exportTitle)
       + '&dates=' + fmt(dt) + '/' + fmt(dtEnd)
-      + '&details=' + encodeURIComponent((event.description || '') + (event.source_url ? '\n\nSource: ' + event.source_url : ''))
+      + '&details=' + encodeURIComponent(details)
       + '&location=' + encodeURIComponent(event.source || '');
     document.getElementById('evadd-google').href = gcalUrl;
 
     const outlookUrl = 'https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent'
-      + '&subject=' + encodeURIComponent(event.title)
+      + '&subject=' + encodeURIComponent(exportTitle)
       + '&startdt=' + dt.toISOString()
       + '&enddt=' + dtEnd.toISOString()
-      + '&body=' + encodeURIComponent(event.description || '');
+      + '&body=' + encodeURIComponent(details);
     document.getElementById('evadd-outlook').href = outlookUrl;
 
     document.getElementById('evadd-ics').onclick = () => downloadIcs(event);
@@ -261,6 +276,16 @@
   }
 
   function downloadIcs(event) {
+    const blob = new Blob([makeIcs(event)], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = event.id.replace(/[^a-zA-Z0-9_-]/g, '_') + '.ics';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function makeIcs(event) {
     const dt = new Date(event.datetime);
     const dtEnd = new Date(dt.getTime() + 30 * 60_000);
     const fmt = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
@@ -274,19 +299,22 @@
       'DTSTART:' + fmt(dt),
       'DTEND:'   + fmt(dtEnd),
       'SUMMARY:' + escapeIcs(event.title),
-      'DESCRIPTION:' + escapeIcs((event.description || '') + (event.source_url ? '\\n\\nSource: ' + event.source_url : '')),
+      'DESCRIPTION:' + escapeIcs((event.description || '') + '\n' + verificationLabel(event) + (event.source_url ? '\nSource: ' + event.source_url : '')),
       'LOCATION:' + escapeIcs(event.source || ''),
-      'STATUS:CONFIRMED',
+      'STATUS:' + (event.status === 'provisional' ? 'TENTATIVE' : 'CONFIRMED'),
       'END:VEVENT',
       'END:VCALENDAR',
     ];
-    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = event.id.replace(/[^a-zA-Z0-9_-]/g, '_') + '.ics';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return lines.join('\r\n') + '\r\n';
+  }
+
+  function localDay(value) {
+    const date = new Date(value);
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
+
+  function verificationLabel(event) {
+    return (event.status === 'provisional' ? 'Provisional' : 'Confirmed') + (event.verification === 'cached' ? ' · verified cache' : '');
   }
 
   function escapeIcs(s) {
@@ -296,5 +324,5 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  global.CalendarModal = { init, open };
+  global.CalendarModal = { init, open, makeIcs, localDay };
 })(window);

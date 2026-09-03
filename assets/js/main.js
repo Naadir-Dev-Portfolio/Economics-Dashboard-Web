@@ -37,7 +37,7 @@
       Promise.all(keys.map(k => DataLoader.section(k))),
       DataLoader.events(),
       DataLoader.news(),
-      DataLoader.narrative(),
+      Promise.resolve(null),
       DataLoader.calendar(),
       DataLoader.education(),
       DataLoader.health(),
@@ -59,54 +59,20 @@
     hideBootScreen();
   }
 
-  /**
-   * Show a banner above the topbar when the BoE / ECB hand-curated date
-   * lists are within 90 days of running out. Reminds the user how to refresh.
-   * Dismiss → suppressed in localStorage for 7 days.
-   */
   function checkScheduleStaleness() {
     const banner = $('#stale-banner');
     if (!banner) return;
-    const events = state.calendar?.events || [];
-    const now = Date.now();
-    const STALE_THRESHOLD_DAYS = 90;
-
-    const lastFor = (key) => {
-      const xs = events.filter(e => e.key === key && new Date(e.datetime).getTime() > now)
-                       .map(e => e.datetime.slice(0, 10))
-                       .sort();
-      return xs.length ? xs[xs.length - 1] : null;
-    };
-    const daysUntil = (iso) => Math.floor((new Date(iso + 'T00:00:00Z').getTime() - now) / 86_400_000);
-
-    const issues = [];
-    const boeLast = lastFor('boe_mpc');
-    const ecbLast = lastFor('ecb_meeting');
-    if (!boeLast || daysUntil(boeLast) < STALE_THRESHOLD_DAYS) {
-      issues.push({ name: 'BoE MPC', last: boeLast, days: boeLast ? daysUntil(boeLast) : -999 });
-    }
-    if (!ecbLast || daysUntil(ecbLast) < STALE_THRESHOLD_DAYS) {
-      issues.push({ name: 'ECB Governing Council', last: ecbLast, days: ecbLast ? daysUntil(ecbLast) : -999 });
-    }
-    if (!issues.length) { banner.hidden = true; return; }
-
-    // Check 7-day dismiss
-    try {
-      const ts = parseInt(localStorage.getItem('staleBannerDismissedAt') || '0', 10);
-      if (ts && Date.now() - ts < 7 * 86_400_000) { banner.hidden = true; return; }
-    } catch (_) {}
-
-    const summary = issues.map(i => i.last
-      ? `<strong>${i.name}</strong> ends ${i.last} (${i.days} day${i.days === 1 ? '' : 's'} left)`
-      : `<strong>${i.name}</strong> schedule has run out`).join(' &nbsp;·&nbsp; ');
-    $('#stale-body').innerHTML =
-      `${summary}. Run <code>python scripts/refresh_committee_dates.py</code> from the repo locally, then commit &amp; push.`;
+    const issues = Object.values(state.sectionData).flatMap(section => Object.values(section?.series || {}))
+      .filter(series => !series.archived && window.ChartKit.freshnessState(series));
+    const calendarIssues = Object.values(state.calendar?.meta?.sources || {}).filter(source => source.status === 'unavailable');
+    if (!issues.length && !calendarIssues.length) { banner.hidden = true; return; }
+    $('#stale-body').textContent = [
+      issues.length ? issues.length + ' series have overdue observations or an unsuccessful refresh.' : '',
+      calendarIssues.length ? calendarIssues.length + ' release calendars have no verified upcoming dates.' : '',
+      'Details are listed in Data Health.',
+    ].filter(Boolean).join(' ');
     banner.hidden = false;
-
-    $('#stale-dismiss')?.addEventListener('click', () => {
-      try { localStorage.setItem('staleBannerDismissedAt', String(Date.now())); } catch (_) {}
-      banner.hidden = true;
-    }, { once: true });
+    $('#stale-dismiss')?.addEventListener('click', () => { banner.hidden = true; }, { once: true });
   }
 
   function initModules() {
@@ -288,7 +254,7 @@
       lines.push(`${bond.name.replace('-Year', 'Y').replace(' Treasury','')} <strong>${bond.stats.last_value.toFixed(2)}%</strong>`);
     }
     if (rate?.stats) {
-      lines.push(`policy rate <strong>${rate.stats.last_value.toFixed(2)}%</strong>`);
+      lines.push(`${rate.name} <strong>${rate.stats.last_value.toFixed(2)}%</strong>`);
     }
     if (cpi?.stats) {
       const v = cpi.stats.last_value;
