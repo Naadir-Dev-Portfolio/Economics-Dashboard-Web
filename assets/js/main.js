@@ -11,6 +11,7 @@
 
   const $  = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  let dismissedNotice = '';
 
   const state = {
     manifest: null,
@@ -56,23 +57,36 @@
     renderReport();
     renderFooterUpdate();
     checkScheduleStaleness();
+    window.addEventListener('data-health-updated', event => {
+      state.health = event.detail;
+      checkScheduleStaleness();
+    });
+    $('#stale-dismiss')?.addEventListener('click', () => {
+      dismissedNotice = $('#stale-body').textContent;
+      $('#stale-banner').hidden = true;
+    });
     hideBootScreen();
   }
 
   function checkScheduleStaleness() {
     const banner = $('#stale-banner');
     if (!banner) return;
-    const issues = Object.values(state.sectionData).flatMap(section => Object.values(section?.series || {}))
-      .filter(series => !series.archived && window.ChartKit.freshnessState(series));
-    const calendarIssues = Object.values(state.calendar?.meta?.sources || {}).filter(source => source.status === 'unavailable');
-    if (!issues.length && !calendarIssues.length) { banner.hidden = true; return; }
+    const sources = (state.health?.sources || []).filter(source => !source.runtime);
+    if (!sources.length) {
+      $('#stale-body').textContent = 'The scheduled-data health report is unavailable.';
+      banner.hidden = $('#stale-body').textContent === dismissedNotice;
+      return;
+    }
+    const issues = sources.flatMap(source => source.issues || []);
+    const failed = sources.filter(source => source.status !== 'ok' || !source.last_fetch ||
+      Date.now() - Date.parse(source.last_fetch) > (source.id === 'news' ? 3 : 36) * 3600000);
+    if (!failed.length && !issues.length) { banner.hidden = true; dismissedNotice = ''; return; }
     $('#stale-body').textContent = [
-      issues.length ? issues.length + ' series have overdue observations or an unsuccessful refresh.' : '',
-      calendarIssues.length ? calendarIssues.length + ' release calendars have no verified upcoming dates.' : '',
+      issues.length ? issues.length + ' data issues: ' + issues.slice(0, 2).map(issue => issue.name).join(', ') + (issues.length > 2 ? ', ...' : '.') : '',
+      failed.length ? 'Sources needing attention: ' + failed.map(source => source.name).join(', ') + '.' : '',
       'Details are listed in Data Health.',
     ].filter(Boolean).join(' ');
-    banner.hidden = false;
-    $('#stale-dismiss')?.addEventListener('click', () => { banner.hidden = true; }, { once: true });
+    banner.hidden = $('#stale-body').textContent === dismissedNotice;
   }
 
   function initModules() {

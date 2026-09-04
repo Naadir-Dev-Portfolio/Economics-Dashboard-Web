@@ -8,8 +8,8 @@
     { id: 'LON', name: 'LONDON',    tz: 'Europe/London',     openH: 8,   closeH: 16.5 },
     { id: 'NYC', name: 'NEW YORK',  tz: 'America/New_York',  openH: 9.5, closeH: 16 },
     { id: 'FFM', name: 'FRANKFURT', tz: 'Europe/Berlin',     openH: 9,   closeH: 17.5 },
-    { id: 'TYO', name: 'TOKYO',     tz: 'Asia/Tokyo',        openH: 9,   closeH: 15 },
-    { id: 'HKG', name: 'HONG KONG', tz: 'Asia/Hong_Kong',    openH: 9.5, closeH: 16 },
+    { id: 'TYO', name: 'TOKYO',     tz: 'Asia/Tokyo',        openH: 9,   closeH: 15.5, breakStart: 11.5, breakEnd: 12.5 },
+    { id: 'HKG', name: 'HONG KONG', tz: 'Asia/Hong_Kong',    openH: 9.5, closeH: 16, breakStart: 12, breakEnd: 13 },
     { id: 'SYD', name: 'SYDNEY',    tz: 'Australia/Sydney',  openH: 10,  closeH: 16 },
   ];
 
@@ -25,6 +25,9 @@
         t.dataset.id = ex.id;
         t.dataset.open  = ex.openH;
         t.dataset.close = ex.closeH;
+        t.dataset.breakStart = ex.breakStart ?? '';
+        t.dataset.breakEnd = ex.breakEnd ?? '';
+        t.title = 'Regular equity-market session; excludes holidays and special sessions.';
         t.innerHTML = `
           <div class="ct-name">${ex.name}</div>
           <div class="ct-time">--:--</div>
@@ -57,7 +60,9 @@
         });
         const localFrac = hour + min / 60;
         const isWeekend = weekday === 'Sat' || weekday === 'Sun';
-        const isOpen = !isWeekend && localFrac >= openH && localFrac < closeH;
+        const onBreak = localFrac >= parseFloat(t.dataset.breakStart) && localFrac < parseFloat(t.dataset.breakEnd);
+        const isOpen = !isWeekend && !onBreak && localFrac >= openH && localFrac < closeH;
+        t.querySelector('.ct-time').className = 'ct-time ' + (isOpen ? 'open' : 'closed');
         const status = t.querySelector('.ct-status');
         status.textContent = isOpen ? 'OPEN' : 'CLOSED';
         status.className = 'ct-status ' + (isOpen ? 'open' : 'closed');

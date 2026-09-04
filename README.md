@@ -42,7 +42,7 @@ The practical outcome: instead of opening five different sites to check the macr
 | Track | Analyse | Compare |
 |---|---|---|
 | 166 economic and market series | Interactive archive with daily market history, zoom, pan, date ranges and annotations | UK, US and international comparisons with explicit reporting periods |
-| Timestamped snapshots and optional browser quotes for indices and five crypto assets | RSS newswire and published release calendars | UK unemployment with correctly labelled age and gender breakdowns |
+| Timestamped market snapshots and optional browser quotes for five crypto assets | RSS newswire and published release calendars | UK unemployment with correctly labelled age and gender breakdowns |
 | Per-source data-health panel showing last-fetch age, delivered/expected counts and runtime status | Auto-generated economic calendar covering the next 12 months of FOMC, BoE, ECB, NFP, CPI, PCE, retail and UK labour releases | "as of [date]" stamp on every chart so the publication lag of each source is always visible |
 
 ## Feature Highlights
@@ -119,7 +119,7 @@ The dashboard uses static files served over HTTP: `index.html`, `assets/` and `d
 | **Primary stack** | `HTML. Javascript` | `CSS` | `Python` |
 | **UI / App layer** | Vanilla HTML/CSS/JS — no framework, no build step. Apache ECharts for category and KPI charts, TradingView embedded widget for the hero chart, custom CSS-grid layout with covert-ops dark theme and full mobile responsive pass. |
 | **Data / Storage** | Static JSON files in `data/` committed back to the repo on each refresh. No database. Per-section, per-source files plus `manifest.json`, `events.json`, `news.json`, `calendar.json`, `health.json` and `education.json`. |
-| **Automation / Integration** | GitHub Actions cron (every hour for news, twice daily for full refresh); FRED REST API; `yfinance` library (Yahoo Finance); HM Land Registry full-file CSV scrape; gov.uk DESNZ weekly fuel CSV scrape; ONS direct time-series API; federalreserve.gov FOMC calendar scrape; RSS aggregator pulling from 14 news sources; CoinGecko REST + Yahoo via CORS-proxy for browser-side live tiles; TradingView embedded widget. |
+| **Automation / Integration** | GitHub Actions cron (every hour for news, twice daily for full refresh); FRED REST API; `yfinance` library (Yahoo Finance); HM Land Registry full-file CSV scrape; gov.uk DESNZ weekly fuel CSV scrape; ONS direct time-series API; federalreserve.gov FOMC calendar scrape; RSS aggregator pulling from 14 news sources; optional CoinGecko REST quotes with bounded retries; TradingView embedded widget. |
 | **Platform** | Web — hosted on GitHub Pages (cross-platform browser). Mobile-first responsive layout down to 375px viewport. |
 
 </details>
@@ -135,7 +135,9 @@ The dashboard uses static files served over HTTP: `index.html`, `assets/` and `d
 
 The workflow runs at 06:30 and 18:30 UTC for full data and hourly for news/calendars. It runs regression tests, fetches observations and published schedules, builds health, validates artifacts, commits data and explicitly publishes Pages. Source-quality failures are reported after valid updates are published.
 
-In the browser, `main.js` loads static JSON. Hero and category panels share a local ECharts renderer with bounded dates, vertical grids, zoom and pan. Every selector, tile and drill-down uses the exact section/series identity. Economic series keep their native frequency; optional TradingView feeds are separate. ECharts and Lucide are pinned local bundles with licenses.
+In the browser, `main.js` loads static JSON. Hero and category panels share a local ECharts renderer with bounded dates, vertical grids, zoom and pan. The hero normalizes wheel input to small cursor-anchored steps. Its optional RSI(14), SMA(20) and SMA(50) use full native-frequency history, including observations before the visible range; zooming never changes the indicator periods. RSI has a synchronized 0-100 lower pane. Indicator choices persist locally, initially off. Every selector, tile and drill-down uses the exact section/series identity. Economic series keep their native frequency; optional TradingView feeds are separate. ECharts, Lucide and `technicalindicators` 3.1.0 are pinned local bundles with licenses.
+
+Scheduled-data health is separate from optional browser feeds. BIS policy-rate observations are daily but [published weekly](https://data.bis.org/topics/CBPOL?m=237), so those four series have a 14-day observation-age allowance; the 36-hour successful-refresh check remains in force. Browser freshness uses the same calendar-day boundaries as Python. Health and news periodically re-fetch published snapshots instead of ageing an indefinitely cached response. CoinGecko polls once per minute while visible and backs off on rate limits or invalid quotes. Yahoo market tiles use the Actions snapshots, not unreliable anonymous CORS proxies. A grey TradingView state means the live chart has not been opened or has been closed; an embedded iframe cannot verify its quote feed. Market-clock colours represent regular weekday sessions, including Tokyo/Hong Kong lunch breaks, not exchange holiday or special-session calendars.
 
 ### Project structure
 
@@ -149,7 +151,7 @@ Economics-Dashboard-Web/
 |   |   +-- data-loader.js          Cached JSON fetcher
 |   |   +-- hero.js                 TradingView widget + archive overlay
 |   |   +-- kpi.js                  Headline carousel + release countdowns
-|   |   +-- live-prices.js          CoinGecko / Yahoo proxy polling
+|   |   +-- live-prices.js          CoinGecko polling / scheduled market snapshots
 |   |   +-- charts.js               ECharts factory
 |   |   +-- category.js             Drill-down matrix + CSV export
 |   |   +-- ribbon.js               Auto-scrolling sparkline strip

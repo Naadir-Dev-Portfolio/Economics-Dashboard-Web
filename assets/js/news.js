@@ -8,10 +8,16 @@
   'use strict';
 
   const state = { items: [], region: 'GLOBAL' };
+  let poller = null;
 
   function init(news) {
     if (news && news.items) state.items = news.items;
     render();
+    if (!poller) poller = setInterval(async () => {
+      if (document.hidden) return;
+      const latest = await global.DataLoader.news();
+      if (latest?.items) { state.items = latest.items; render(); }
+    }, 5 * 60000);
   }
 
   function setRegion(region) { state.region = region; render(); }

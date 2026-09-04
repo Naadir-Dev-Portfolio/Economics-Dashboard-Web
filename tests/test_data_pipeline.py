@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 import build_health
 import fetch_calendar as calendar
 import fetch_data
+import fetch_news
 from data_quality import compute_stats, freshness, period_label, to_ms, validate_points, write_json, yoy
 from source_providers import redact_credentials, sdmx_points
 
@@ -63,6 +64,23 @@ class DataQualityTests(unittest.TestCase):
         self.assertEqual(freshness(series, now=NOW), 'stale')
         self.assertEqual(freshness(series, {'archived': True}, NOW), 'archived')
 
+    def test_daily_freshness_uses_whole_calendar_days(self):
+        now = datetime(2026, 9, 4, 23, 59, 59, tzinfo=UTC)
+        series = {'frequency': 'd', 'stats': {'last_date': '2026-08-28'}}
+        self.assertEqual(freshness(series, now=now), 'current')
+        series['stats']['last_date'] = '2026-08-27'
+        self.assertEqual(freshness(series, now=now), 'stale')
+
+    def test_bis_policy_rates_allow_weekly_publication_but_still_expire(self):
+        now = datetime(2026, 9, 4, tzinfo=UTC)
+        configs = [s for s in fetch_data.SECTIONS['rates']['series'] if s.get('bis_policy')]
+        self.assertEqual(len(configs), 4)
+        for config in configs:
+            series = {'frequency': 'd', 'stats': {'last_date': '2026-08-27'}}
+            self.assertEqual(freshness(series, config, now), 'current')
+            series['stats']['last_date'] = '2026-08-20'
+            self.assertEqual(freshness(series, config, now), 'stale')
+
     def test_atomic_writer_preserves_good_file_on_bad_payload(self):
         cache = ROOT / '.cache'
         cache.mkdir(exist_ok=True)
@@ -79,6 +97,42 @@ class DataQualityTests(unittest.TestCase):
                 {'TIME_PERIOD': '2026-08', 'OBS_VALUE': 'NaN', 'UNIT_MEASURE': '771'},
                 {'TIME_PERIOD': '2026-07', 'OBS_VALUE': '110', 'UNIT_MEASURE': '628'}]
         self.assertEqual(sdmx_points(rows, {'UNIT_MEASURE': '771'}), [[to_ms('2026-07-01'), 2.5]])
+
+
+class NewsTests(unittest.TestCase):
+    def test_empty_feeds_are_valid_but_html_and_invalid_xml_are_not(self):
+        self.assertEqual(fetch_news.parse_feed('<rss><channel/></rss>', 'Test', ['UK']), [])
+        self.assertEqual(fetch_news.parse_feed('<feed xmlns="http://www.w3.org/2005/Atom"/>', 'Test', ['UK']), [])
+        for xml in ['<html/>', '<rss>', '<rss><channel><item/></channel></rss>']:
+            with self.assertRaises(ValueError):
+                fetch_news.parse_feed(xml, 'Test', ['UK'])
+
+    def test_news_retention_and_health_distinguish_failure_from_empty_feed(self):
+        (ROOT / '.cache').mkdir(exist_ok=True)
+        headline = {'title': 'Economic release', 'source': 'Test', 'link': 'https://example.com/news',
+                    'published': '2026-09-01T10:00:00+00:00', 'summary': 'Release', 'regions': ['UK']}
+        with tempfile.TemporaryDirectory(dir=ROOT / '.cache') as directory:
+            data = Path(directory)
+            write_json(data / 'news.json', {'items': [headline]})
+            with patch.object(fetch_news, 'DATA_DIR', data), patch.object(fetch_news, 'SOURCES', [('Test', 'https://example.com/feed', ['UK'])]):
+                with patch.object(fetch_news, 'fetch_url', return_value=None):
+                    failed = fetch_news.run()
+                self.assertEqual(failed['items'][0]['published'], headline['published'])
+                self.assertEqual(failed['meta']['feed_status']['Test']['status'], 'error')
+                with patch.object(build_health, 'load', return_value=failed):
+                    health = build_health.build_news()
+                self.assertEqual(health['status'], 'error')
+                self.assertEqual(health['delivered'], 0)
+                self.assertEqual(len(health['issues']), 1)
+                with patch.object(fetch_news, 'fetch_url', return_value='<rss><channel/></rss>'):
+                    empty = fetch_news.run()
+                self.assertEqual(empty['meta']['by_source']['Test'], 0)
+                self.assertEqual(empty['meta']['feed_status']['Test']['status'], 'ok')
+                self.assertEqual(empty['items'][0]['published'], headline['published'])
+                with patch.object(build_health, 'load', return_value=empty):
+                    health = build_health.build_news()
+                self.assertEqual(health['status'], 'ok')
+                self.assertEqual(health['delivered'], 1)
 
 
 class FetchTests(unittest.TestCase):

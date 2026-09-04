@@ -1,15 +1,14 @@
 /**
  * live-prices.js — realtime price tiles.
  *
- * Two feeds:
- *   • CoinGecko (no auth, browser-friendly) for crypto
- *   • Yahoo Finance via a public CORS proxy for indices / FX / commodities
+ * CoinGecko provides optional crypto quotes. Other markets use the
+ * timestamped Yahoo snapshots produced by GitHub Actions, without public proxies.
  *
- * Polls every 20 s. When a tile's price changes we flash white-on-up,
+ * Polls once per minute, backing off on failure. Price changes flash white-on-up,
  * red-on-down. The change-line shows a green ▲ or red ▼ arrow but the
  * change number itself stays in the neutral text colour, per user request.
  *
- * Falls back gracefully when the proxy is rate-limited (keeps the last
+ * Falls back gracefully when the feed is rate-limited (keeps the last
  * known value, just stops the flash animations).
  */
 (function (global) {
@@ -36,7 +35,7 @@
     { id: 'atom', label: 'Cosmos',   region: 'ATOM', kind: 'coingecko', src: 'cosmos',   unit: 'USD', tv: 'BINANCE:ATOMUSDT' },
   ];
 
-  const POLL_MS = 20_000;
+  const POLL_MS = 60_000;
   const LOCAL_REFS = {
     sp500: ['markets', 'sp500'], ftse100: ['markets', 'ftse100'], nasdaq: ['markets', 'nasdaq'],
     dax: ['markets', 'dax'], gold: ['commodities', 'gold'], brent: ['commodities', 'oil_brent'],
@@ -48,6 +47,7 @@
   let poller = null;
   let refreshing = false;
   let localData = {};
+  let failures = 0, nextPoll = 0, visibilityBound = false;
 
   function init(sectionData) {
     localData = sectionData;
@@ -71,6 +71,18 @@
     refresh();
     if (poller) clearInterval(poller);
     poller = setInterval(refresh, POLL_MS);
+    if (!visibilityBound) {
+      visibilityBound = true;
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) global.HealthPanel?.setRuntimeStatus('coingecko', 'inactive', { message: 'Paused while this tab is hidden' });
+        else {
+          if (Date.now() < nextPoll) global.HealthPanel?.setRuntimeStatus('coingecko', failures ? false : 'waiting', {
+            message: 'Waiting for next permitted quote request', retry_at: new Date(nextPoll).toISOString(),
+          });
+          refresh();
+        }
+      });
+    }
   }
 
   function buildTile(spec, seed) {
@@ -123,13 +135,13 @@
 
   // ────────── data fetching ──────────
   async function refresh() {
-    if (refreshing || document.hidden) return;
+    if (refreshing || document.hidden || Date.now() < nextPoll) return;
     refreshing = true;
     try {
-      const [cg, yh] = await Promise.all([fetchCoinGecko(), fetchYahoo()]);
-      const updated = applyResults(cg || {}, yh || {});
+      const cg = await fetchCoinGecko();
+      const updated = applyResults(cg || {});
       const last = document.getElementById('live-last');
-      if (last) last.textContent = updated ? 'Quotes received ' + new Date().toLocaleTimeString('en-GB', { hour12: false }) : 'Live feeds unavailable; snapshots retained';
+      if (last) last.textContent = updated ? 'Crypto quotes / market snapshots' : 'Snapshots / crypto retry pending';
     } catch (e) {
       console.warn('[live-prices] poll failed', e);
     } finally {
@@ -142,7 +154,12 @@
     const timeout = setTimeout(() => controller.abort(), 10_000);
     try {
       const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
-      if (!response.ok) throw new Error('Quote request failed');
+      if (!response.ok) {
+        const error = new Error(response.status === 429 ? 'Rate limited' : 'Quote request failed (' + response.status + ')');
+        const retry = response.headers.get('Retry-After');
+        error.retryMs = retry ? (/^\d+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - Date.now()) : 0;
+        throw error;
+      }
       return await response.json();
     } finally { clearTimeout(timeout); }
   }
@@ -153,40 +170,39 @@
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true`;
     try {
       const j = await requestJSON(url);
-      global.HealthPanel?.setRuntimeStatus('coingecko', Object.keys(j).length > 0);
-      return j;
-    } catch (_) {
-      global.HealthPanel?.setRuntimeStatus('coingecko', false);
+      const valid = Object.fromEntries(ids.filter(id => validQuote(j[id])).map(id => [id, j[id]]));
+      if (Object.keys(valid).length !== ids.length) {
+        recordFailure(new Error('Missing, invalid or delayed crypto quotes'));
+      } else {
+        failures = 0;
+        nextPoll = Date.now() + POLL_MS;
+        global.HealthPanel?.setRuntimeStatus('coingecko', true, { message: 'All crypto quotes received with recent timestamps' });
+      }
+      return valid;
+    } catch (error) {
+      recordFailure(error);
       return {};
     }
   }
 
-  // Yahoo Finance public quote endpoint; needs a CORS proxy from browsers.
-  const CORS_PROXIES = [
-    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  ];
-
-  async function fetchYahoo() {
-    const symbols = [...new Set([...MAJOR, ...CRYPTO].filter(t => t.kind === 'yahoo').map(t => t.src))];
-    if (!symbols.length) return {};
-    const target = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols.join(','))}`;
-    for (const proxy of CORS_PROXIES) {
-      try {
-        const json = await requestJSON(proxy(target));
-        const list = json?.quoteResponse?.result || [];
-        if (!list.length) continue;
-        const map = {};
-        list.forEach(q => { map[q.symbol] = q; });
-        global.HealthPanel?.setRuntimeStatus('yahoo_proxy', true);
-        return map;
-      } catch (_) { /* try next */ }
-    }
-    global.HealthPanel?.setRuntimeStatus('yahoo_proxy', false);
-    return {};
+  function retryDelay(attempt, retryMs = 0) {
+    return Math.min(3600000, Math.max(POLL_MS, Math.min(15 * POLL_MS, POLL_MS * 2 ** Math.min(attempt - 1, 4)), Number.isFinite(retryMs) ? retryMs : 0));
   }
 
-  function applyResults(cgData, yhData) {
+  function recordFailure(error) {
+    nextPoll = Date.now() + retryDelay(++failures, error.retryMs);
+    global.HealthPanel?.setRuntimeStatus('coingecko', false, {
+      message: error.name === 'AbortError' ? 'Request timed out; previous prices retained' : error.message + '; previous prices retained',
+      retry_at: new Date(nextPoll).toISOString(),
+    });
+  }
+
+  function validQuote(row) {
+    return row && Number.isFinite(row.usd) && row.usd > 0 && Number.isFinite(row.last_updated_at) &&
+      row.last_updated_at * 1000 <= Date.now() + 300000 && Date.now() - row.last_updated_at * 1000 < 10 * 60000;
+  }
+
+  function applyResults(cgData) {
     let updated = 0;
     [...MAJOR, ...CRYPTO].forEach(spec => {
       let price = null, change = null, timestamp = null;
@@ -196,13 +212,6 @@
           price = row.usd;
           change = row.usd_24h_change;
           timestamp = row.last_updated_at;
-        }
-      } else if (spec.kind === 'yahoo') {
-        const row = yhData[spec.src];
-        if (row) {
-          price = row.regularMarketPrice;
-          change = row.regularMarketChangePercent;
-          timestamp = row.regularMarketTime;
         }
       }
       if (!Number.isFinite(price) || !Number.isFinite(timestamp) || timestamp <= 0 || timestamp * 1000 > Date.now() + 300000) return;
@@ -234,7 +243,7 @@
 
     valEl.textContent = formatPrice(price, spec);
 
-    if (change24h != null && !isNaN(change24h)) {
+    if (Number.isFinite(change24h)) {
       const cls = change24h > 0 ? 'up' : change24h < 0 ? 'down' : '';
       const arrow = change24h > 0 ? '▲' : change24h < 0 ? '▼' : '·';
       chgArrow.className = 'lt-arrow ' + cls;
@@ -251,5 +260,5 @@
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  global.LivePrices = { init };
+  global.LivePrices = { init, retryDelay, validQuote };
 })(window);

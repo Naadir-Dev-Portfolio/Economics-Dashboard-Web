@@ -235,6 +235,9 @@
           <input type="date" id="hero-date-to" aria-label="End date" title="End date" />
         </div>
         <div class="chart-tools">
+          <button class="indicator-tool" data-indicator="rsi" aria-pressed="false" title="Relative strength index, 14 periods"><i data-lucide="activity"></i><span>RSI 14</span></button>
+          <button class="indicator-tool" data-indicator="fast" aria-pressed="false" title="Fast simple moving average, 20 periods"><i data-lucide="chart-no-axes-combined"></i><span>MA 20</span></button>
+          <button class="indicator-tool" data-indicator="slow" aria-pressed="false" title="Slow simple moving average, 50 periods"><i data-lucide="chart-no-axes-combined"></i><span>MA 50</span></button>
           <button id="hero-reset" class="icon-tool" title="Reset zoom" aria-label="Reset zoom"><i data-lucide="rotate-ccw"></i></button>
           <button id="hero-export" class="icon-tool" title="Download series CSV" aria-label="Download series CSV"><i data-lucide="download"></i></button>
         </div>
@@ -506,6 +509,7 @@
 
   <script src="assets/vendor/echarts-5.5.1.min.js"></script>
   <script src="assets/vendor/lucide-0.468.0.min.js"></script>
+  <script src="assets/vendor/technicalindicators-3.1.0.js"></script>
   <!-- TradingView widget loader -->
   <script src="https://s3.tradingview.com/tv.js"></script>
 

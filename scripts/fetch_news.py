@@ -5,8 +5,8 @@ score for "major-event" promotion, and write:
   data/news.json           — newest-first list of news items
   data/events_recent.json  — items the keyword scorer flagged as major
 
-Designed to run hourly in GH Actions.  Has zero non-stdlib deps so it
-doesn't bloat the workflow install step (feedparser is nice but optional).
+Designed to run hourly in GH Actions, using the shared bounded HTTP retries
+and atomic JSON writer.
 """
 
 from __future__ import annotations
@@ -21,7 +21,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
-import requests
+from data_quality import write_json
+from source_providers import get
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -109,8 +110,7 @@ HEADERS = {
 
 def fetch_url(url: str, timeout: int = 25) -> str | None:
     try:
-        r = requests.get(url, headers=HEADERS, timeout=timeout)
-        r.raise_for_status()
+        r = get(url, headers=HEADERS, timeout=timeout)
         # Be lenient with encoding. Many feeds claim UTF-8 but embed cp1252
         # smart quotes via HTML entities, while some genuinely serve UTF-8.
         # Try strict UTF-8 first; on errors, fall back to Windows-1252.
@@ -136,8 +136,9 @@ def parse_feed(xml: str, source: str, regions: list[str]) -> list[dict]:
     try:
         root = ET.fromstring(xml)
     except ET.ParseError as e:
-        log.warning("parse error for %s: %s", source, e)
-        return out
+        raise ValueError(f'Invalid feed XML: {e}') from e
+    if root.tag != '{' + NS['atom'] + '}feed' and not (root.tag == 'rss' and root.find('channel') is not None):
+        raise ValueError('Response is not an RSS or Atom feed')
 
     # RSS 2.0
     items = root.findall(".//item")
@@ -145,6 +146,8 @@ def parse_feed(xml: str, source: str, regions: list[str]) -> list[dict]:
         for it in items:
             entry = parse_rss_item(it, source, regions)
             if entry: out.append(entry)
+        if not out:
+            raise ValueError('RSS entries have no usable titles and links')
         return out
 
     # Atom
@@ -153,6 +156,8 @@ def parse_feed(xml: str, source: str, regions: list[str]) -> list[dict]:
         for e in entries:
             entry = parse_atom_entry(e, source, regions)
             if entry: out.append(entry)
+        if not out:
+            raise ValueError('Atom entries have no usable titles and links')
         return out
 
     return out
@@ -261,14 +266,29 @@ def run() -> dict:
     all_items: list[dict] = []
     seen = set()
     by_source = {}
+    feed_status = {}
+    try:
+        previous = json.loads((DATA_DIR / 'news.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        previous = {}
+    checked = started.isoformat(timespec='seconds')
 
     for label, url, regions in SOURCES:
-        xml = fetch_url(url)
-        if not xml:
+        report = {'url': url, 'checked_at': checked, 'status': 'ok', 'last_success': checked}
+        try:
+            xml = fetch_url(url)
+            if not xml:
+                raise ValueError('HTTP request failed after retries')
+            items = parse_feed(xml, label, regions)
+            by_source[label] = len(items)
+        except ValueError as error:
             by_source[label] = 0
-            continue
-        items = parse_feed(xml, label, regions)
-        by_source[label] = len(items)
+            report.update(status='error', error=str(error), last_success=previous.get('meta', {}).get('feed_status', {}).get(label, {}).get('last_success'))
+            log.warning('%s: %s; retaining previous headlines', label, error)
+            items = []
+        if not items:
+            items = [item for item in previous.get('items', []) if item.get('source') == label]
+        feed_status[label] = report
         for it in items:
             host = urlparse(it["link"]).netloc + urlparse(it["link"]).path
             key = (host, it["title"].lower()[:80])
@@ -290,11 +310,12 @@ def run() -> dict:
             "generated_at": started.isoformat(timespec="seconds"),
             "count": len(all_items),
             "by_source": by_source,
+            "feed_status": feed_status,
         },
         "items": all_items,
     }
-    (DATA_DIR / "news.json").write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    log.info("wrote news.json — %d items across %d sources", len(all_items), sum(1 for v in by_source.values() if v))
+    write_json(DATA_DIR / 'news.json', payload)
+    log.info("wrote news.json — %d items; %d responding feeds", len(all_items), sum(r['status'] == 'ok' for r in feed_status.values()))
 
     # Recent events — promote high/med items, dedupe by a more aggressive title match
     recent_events = []
@@ -322,7 +343,7 @@ def run() -> dict:
         },
         "events": recent_events[:80],
     }
-    (DATA_DIR / "events_recent.json").write_text(json.dumps(events_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    write_json(DATA_DIR / 'events_recent.json', events_payload)
     log.info("wrote events_recent.json — %d promoted events", len(recent_events))
 
     return payload

@@ -15,6 +15,9 @@
   // [sectionKey, seriesId, label, optional TradingView symbol, region badge,
   //  calendar event key for the countdown]
   const KPI_DEFS = [
+    ['commodities', 'oil_brent',     'BRENT',          'TVC:UKOIL',         'GLOBAL', null],
+    ['commodities', 'oil_wti',       'WTI',            'TVC:USOIL',         'US',     null],
+    ['commodities', 'uk_petrol',     'UK PETROL',      null,                'UK',     'uk_fuel'],
     ['rates',       'fed_funds',     'FED FUNDS',      'ECONOMICS:USINTR',  'US',     'fomc'],
     ['rates',       'boe_rate',      'BOE RATE',       'ECONOMICS:GBINTR',  'UK',     'boe_mpc'],
     ['rates',       'ecb_rate',      'ECB RATE',       'ECONOMICS:EUINTR',  'EU',     'ecb_meeting'],
@@ -23,9 +26,6 @@
     ['inflation',   'uk_cpi_yoy',    'UK CPI',         'ECONOMICS:GBIRYY',  'UK',     'uk_cpi'],
     ['employment',  'us_unrate',     'US UNEMPLOYMENT','ECONOMICS:USURATE', 'US',     'us_nfp'],
     ['employment',  'uk_unrate',     'UK UNEMPLOYMENT','ECONOMICS:GBURATE', 'UK',     'uk_labour'],
-    ['commodities', 'oil_brent',     'BRENT',          'TVC:UKOIL',         'GLOBAL', null],
-    ['commodities', 'oil_wti',       'WTI',            'TVC:USOIL',         'US',     null],
-    ['commodities', 'uk_petrol',     'UK PETROL',      null,                'UK',     'uk_fuel'],
     ['commodities', 'uk_diesel',     'UK DIESEL',      null,                'UK',     'uk_fuel'],
     ['commodities', 'gold',          'GOLD',           'TVC:GOLD',          'GLOBAL', null],
     ['risk',        'vix',           'VIX',            'TVC:VIX',           'US',     null],

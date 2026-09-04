@@ -610,6 +610,8 @@ button { font-family: inherit; }
 .hc-dot-warning { background: #ffb454; box-shadow: 0 0 0 2px var(--bg-1), 0 0 6px rgba(255,180,84,0.45); }
 .hc-dot-error   { background: var(--rd-0); box-shadow: 0 0 0 2px var(--bg-1), 0 0 6px var(--rd-glow); animation: blink 1.6s ease-in-out infinite; }
 .hc-dot-pending { background: var(--tx-3); }
+.hc-dot-embedded, .hc-dot-inactive, .hc-dot-waiting { background: var(--tx-3); }
+.hc-group { margin: 10px 4px 5px; color: var(--tx-3); font: 10px var(--ff-mono); letter-spacing: 0; }
 
 .hc-glyph {
   color: var(--rd-0);
@@ -1254,15 +1256,17 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
   color: var(--tx-0);
   font-weight: 500;
 }
+.clock-tile .ct-time.open { color: #4ade80; }
+.clock-tile .ct-time.closed { color: var(--rd-0); }
 .clock-tile .ct-status {
   font-family: var(--ff-mono);
   font-size: 9px;
   letter-spacing: 0.1em;
 }
 .clock-tile .ct-status.open { color: var(--tx-0); }
-.clock-tile .ct-status.open::before { content: '●'; color: var(--rd-0); margin-right: 4px; }
+.clock-tile .ct-status.open::before { content: '●'; color: #4ade80; margin-right: 4px; }
 .clock-tile .ct-status.closed { color: var(--tx-3); }
-.clock-tile .ct-status.closed::before { content: '○'; color: var(--tx-dim); margin-right: 4px; }
+.clock-tile .ct-status.closed::before { content: '○'; color: var(--rd-0); margin-right: 4px; }
 
 /* ════════════════════════════════════════════════════════════════════
    STATUS RIBBON
@@ -1469,10 +1473,18 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
 .chart-dates { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--tx-3); font: 10px var(--ff-mono); }
 .chart-dates input { width: 128px; max-width: 100%; min-width: 0; height: 32px; border: 1px solid var(--bd-2); border-radius: 2px; color-scheme: dark; background: var(--bg-2); color: var(--tx-1); font: 11px var(--ff-mono); padding: 4px; }
 .chart-tools { display: flex; gap: 5px; margin-left: auto; }
+.indicator-tool { display: inline-flex; align-items: center; justify-content: center; gap: 4px; width: 78px; height: 32px; padding: 4px; border: 1px solid var(--bd-2); background: var(--bg-2); color: var(--tx-2); border-radius: 2px; font: 10px var(--ff-mono); letter-spacing: 0; cursor: pointer; }
+.indicator-tool svg { width: 14px; height: 14px; flex-shrink: 0; }
+.indicator-tool[data-indicator="rsi"].is-active { color: #a3e635; border-color: #a3e635; }
+.indicator-tool[data-indicator="fast"].is-active { color: #22d3ee; border-color: #22d3ee; }
+.indicator-tool[data-indicator="slow"].is-active { color: #fbbf24; border-color: #fbbf24; }
+.indicator-tool:hover { color: var(--tx-0); }
+.indicator-tool:disabled { opacity: .35; cursor: not-allowed; }
 .icon-tool { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 6px; color: var(--tx-1); border: 1px solid var(--bd-2); background: var(--bg-2); border-radius: 2px; cursor: pointer; }
 .icon-tool svg { width: 16px; height: 16px; }
 .icon-tool:hover, .chart-ranges button:hover { border-color: var(--rd-line); color: var(--tx-0); }
 .hero-chart { min-height: 360px; height: 460px; }
+.hero-chart.has-rsi { min-height: 480px; height: 560px; }
 .hero-foot { flex-wrap: wrap; align-items: flex-start; }
 .hero-source { line-height: 1.6; overflow-wrap: anywhere; letter-spacing: 0; }
 .chart-empty { padding: 48px 20px; color: var(--tx-2); text-align: center; font: 13px var(--ff-sans); }
@@ -1498,6 +1510,7 @@ details[open] .live-crypto-arrow { transform: rotate(180deg); }
   .hero-tools { padding: 8px 10px; gap: 8px; }
   .chart-dates { order: 3; flex-basis: 100%; }
   .chart-dates input { width: 132px; }
+  .chart-tools { margin-left: 0; flex-wrap: wrap; }
   .hero-chart { height: 340px; min-height: 320px; }
   .hero-foot { padding: 8px 10px; }
   .cat-focus-chart { height: 210px; }

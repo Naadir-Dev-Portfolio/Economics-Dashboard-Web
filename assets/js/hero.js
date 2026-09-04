@@ -21,12 +21,15 @@
   };
   const REGIONS = { GLOBAL: ['markets', 'sp500'], US: ['markets', 'sp500'], UK: ['markets', 'ftse100'], EU: ['markets', 'dax'], ASIA: ['markets', 'nikkei'] };
   const state = { mode: 'archive', key: '', symbol: null, series: null, data: {}, chart: null, widget: null, annotations: [], range: '5Y' };
+  const indicators = { rsi: false, fast: false, slow: false };
+  const INDICATORS = { rsi: ['RSI 14', 15], fast: ['SMA 20', 20], slow: ['SMA 50', 50] };
   const $ = id => document.getElementById(id);
   const iso = ts => new Date(ts).toISOString().slice(0, 10);
 
   function disposeChart() {
     state.chart?.dispose();
     state.chart = null;
+    if (state.widget) global.HealthPanel?.setRuntimeStatus('tradingview', 'inactive', { message: 'Live chart closed' });
     try { state.widget?.remove?.(); } catch (_) { /* Third-party widget may already be removed. */ }
     state.widget = null;
     $('hero-chart').replaceChildren();
@@ -74,6 +77,7 @@
     source.title = series?.note || '';
     $('hero-chart').dataset.seriesKey = state.key;
     $('hero-chart').dataset.mode = state.mode;
+    syncIndicators();
 
     if (archive && series) {
       const data = series.data;
@@ -82,7 +86,7 @@
         input.max = iso(data[data.length - 1][0]);
       }
       state.chart = global.ChartKit.createCardChart($('hero-chart'), series, {
-        range: state.range, annotations: state.annotations,
+        range: state.range, annotations: state.annotations, fineZoom: true, indicators,
         onZoom(view) { syncDates(view); syncRangeButtons(null); },
       });
       if (!state.chart) $('hero-chart').textContent = 'Chart renderer unavailable.';
@@ -161,6 +165,20 @@
     syncRangeButtons(range);
   }
 
+  function syncIndicators() {
+    document.querySelectorAll('[data-indicator]').forEach(button => {
+      const key = button.dataset.indicator;
+      const [name, minimum] = INDICATORS[key];
+      const available = !!global.SMA && !!global.RSI && state.series?.data?.length >= minimum;
+      button.disabled = !available;
+      button.setAttribute('aria-pressed', String(indicators[key]));
+      button.classList.toggle('is-active', indicators[key]);
+      const frequency = global.ChartKit.FREQUENCIES[state.series?.frequency]?.toLowerCase() || 'native-frequency';
+      button.title = available ? name + ' (' + frequency + ' observations)' : name + ': needs at least ' + minimum + ' observations';
+    });
+    $('hero-chart').classList.toggle('has-rsi', state.mode === 'archive' && indicators.rsi && state.series?.data?.length >= 15);
+  }
+
   function renderAnnotations() {
     $('hero-annotations').hidden = state.mode !== 'archive' || !state.annotations.length;
     $('ann-list').replaceChildren();
@@ -199,6 +217,10 @@
 
   function init(sectionData) {
     state.data = sectionData;
+    try {
+      const saved = JSON.parse(localStorage.getItem('heroIndicators') || '{}');
+      Object.keys(indicators).forEach(key => { indicators[key] = saved?.[key] === true; });
+    } catch (_) { /* Use defaults when storage is unavailable. */ }
     const select = $('hero-symbol');
     select.replaceChildren();
     Object.entries(sectionData).forEach(([section, payload]) => {
@@ -219,6 +241,14 @@
     $('hero-mode-live').addEventListener('click', () => setMode('live'));
     document.querySelectorAll('[data-hero-range]').forEach(button => button.addEventListener('click', () => setRange(button.dataset.heroRange)));
     $('hero-reset').addEventListener('click', () => setRange('MAX'));
+    document.querySelectorAll('[data-indicator]').forEach(button => button.addEventListener('click', () => {
+      const key = button.dataset.indicator;
+      indicators[key] = !indicators[key];
+      syncIndicators();
+      state.chart?.setIndicators(indicators);
+      state.chart?.resize();
+      try { localStorage.setItem('heroIndicators', JSON.stringify(indicators)); } catch (_) { /* Optional preference. */ }
+    }));
     $('hero-export').addEventListener('click', () => {
       if (!state.series) return;
       const rows = ['date,value', ...state.series.data.map(([ts, value]) => iso(ts) + ',' + value)];

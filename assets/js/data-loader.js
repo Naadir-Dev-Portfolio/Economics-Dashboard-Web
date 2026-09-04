@@ -12,21 +12,24 @@
   const BASE = 'data';
 
   async function fetchJSON(path) {
-    if (cache.has(path)) return cache.get(path);
+    const cached = cache.get(path);
+    if (cached && Date.now() - cached.at < 5 * 60000) return cached.data;
     if (inflight.has(path)) return inflight.get(path);
-    const p = fetch(`${path}?v=${Date.now()}`, { cache: 'no-store' })
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const p = fetch(`${path}?v=${Date.now()}`, { cache: 'no-store', signal: controller.signal })
       .then(async r => {
         if (!r.ok) throw new Error(`${path}: ${r.status}`);
         const json = await r.json();
-        cache.set(path, json);
+        cache.set(path, { data: json, at: Date.now() });
         inflight.delete(path);
         return json;
       })
       .catch(err => {
         inflight.delete(path);
         console.warn('[data-loader]', err);
-        return null;
-      });
+        return cached?.data || null;
+      }).finally(() => clearTimeout(timeout));
     inflight.set(path, p);
     return p;
   }

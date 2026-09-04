@@ -12,6 +12,7 @@ OUT = ROOT / '.cache' / 'browser'
 OUT.mkdir(parents=True, exist_ok=True)
 URL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:4173/'
 errors = []
+requests = []
 results = {}
 
 
@@ -42,6 +43,7 @@ with tempfile.TemporaryDirectory(dir=OUT, prefix='profile-') as profile, sync_pl
         context.route('**/*', lambda route: route.continue_() if route.request.url.startswith(URL) else route.abort())
         page = context.pages[0]
         page.on('pageerror', lambda error: errors.append(str(error)))
+        page.on('request', lambda request: requests.append(request.url))
         page.goto(URL, wait_until='domcontentloaded')
         ready(page)
         results['desktop_canvas_pixels'] = canvas_pixels(page)
@@ -51,6 +53,21 @@ with tempfile.TemporaryDirectory(dir=OUT, prefix='profile-') as profile, sync_pl
         assert option['xAxis'][0]['max'] == 'dataMax'
         assert len(option['dataZoom']) == 2
         page.screenshot(path=str(OUT / 'desktop.png'))
+        labels = page.locator('#kpi-row .kpi-tile').evaluate_all('(tiles) => tiles.map(tile => tile.dataset.seriesKey)')
+        assert labels[:7] == ['commodities/oil_brent', 'commodities/oil_wti', 'commodities/uk_petrol', 'rates/fed_funds', 'rates/boe_rate', 'rates/ecb_rate', 'money/us_m2'], labels
+        assert page.locator('.hc-row[data-id="yahoo_proxy"]').count() == 0
+        assert 'Scheduled data' in page.locator('#health-panel').inner_text()
+        assert 'Optional browser feeds' in page.locator('#health-panel').inner_text()
+        assert 'Not opened' in page.locator('.hc-row[data-id="tradingview"]').inner_text()
+        clocks = page.locator('.clock-tile').evaluate_all("""tiles => tiles.map(tile => ({
+          open: tile.querySelector('.ct-status').classList.contains('open'),
+          color: getComputedStyle(tile.querySelector('.ct-time')).color,
+          classes: tile.querySelector('.ct-time').className,
+        }))""")
+        for clock in clocks:
+            assert ('open' if clock['open'] else 'closed') in clock['classes']
+            assert clock['color'] == ('rgb(74, 222, 128)' if clock['open'] else 'rgb(255, 71, 87)'), clock
+        results['kpi_order_and_clock_colours'] = 'passed'
 
         selections = page.locator('#hero-symbol option').evaluate_all('(options) => options.map(option => option.value)')
         for selection in selections:
@@ -111,6 +128,36 @@ with tempfile.TemporaryDirectory(dir=OUT, prefix='profile-') as profile, sync_pl
         page.wait_for_timeout(300)
         assert page.locator('#hero-date-from').input_value() != before_pan, 'Drag pan did not change the visible date range'
         results['drag_pan'] = 'passed'
+        view = page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption().dataZoom[0]")
+        for key in ['rsi', 'fast', 'slow']:
+            page.locator(f'[data-indicator="{key}"]').click()
+            assert page.locator(f'[data-indicator="{key}"]').get_attribute('aria-pressed') == 'true'
+        option = page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption()")
+        assert len(option['grid']) == 2 and len(option['series']) == 4
+        assert option['dataZoom'][0]['startValue'] == view['startValue']
+        assert option['dataZoom'][0]['endValue'] == view['endValue']
+        assert option['dataZoom'][0]['xAxisIndex'] == [0, 1]
+        averages = next(s['data'] for s in option['series'] if s['id'] == 'fast')
+        assert averages[0][0] == points[19][0]
+        assert abs(averages[0][1] - sum(p[1] for p in points[:20]) / 20) < 1e-6
+        rsi_values = next(s['data'] for s in option['series'] if s['id'] == 'rsi')
+        assert rsi_values[0][0] == points[14][0]
+        assert all(0 <= p[1] <= 100 for p in rsi_values)
+        for delta in [-10000, 10000, -20, 20]:
+            box = page.locator('#hero-chart').bounding_box()
+            page.mouse.move(box['x'] + box['width'] * .5, box['y'] + box['height'] * .4)
+            before_zoom = page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption().dataZoom[0]")
+            page.mouse.wheel(0, delta)
+            page.wait_for_timeout(150)
+            after_zoom = page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption().dataZoom[0]")
+            ratio = (after_zoom['endValue'] - after_zoom['startValue']) / (before_zoom['endValue'] - before_zoom['startValue'])
+            assert .92 < ratio < 1.09, (delta, ratio)
+            assert (ratio < 1) == (delta < 0), (delta, ratio)
+        assert page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption().series.find(s => s.id === 'rsi').data") == rsi_values
+        page.locator('[data-indicator="rsi"]').click()
+        assert len(page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption().grid")) == 1
+        page.locator('[data-indicator="rsi"]').click()
+        results['indicators_and_fine_wheel'] = 'passed'
         page.mouse.move(0, 0)
         page.locator('#hero-panel').screenshot(path=str(OUT / 'desktop-hero.png'))
         with page.expect_download() as download_info:
@@ -125,6 +172,18 @@ with tempfile.TemporaryDirectory(dir=OUT, prefix='profile-') as profile, sync_pl
         page.evaluate("HealthPanel.setRuntimeStatus('coingecko', true); HealthPanel.setRuntimeStatus('coingecko', false)")
         assert page.locator('.hc-row[data-id="coingecko"] .hc-dot').get_attribute('class').endswith('warning')
         results['offline_and_degraded_states'] = 'passed'
+        assert not any('corsproxy.io' in url or 'allorigins.win' in url or '/v7/finance/quote' in url for url in requests)
+        healthy = page.evaluate('DataLoader.health()')
+        notice = {'sources': [{'id': 'bis', 'name': 'BIS', 'status': 'warning', 'issues': [{'name': 'Example rate', 'reason': 'overdue observation'}]}]}
+        page.evaluate("detail => dispatchEvent(new CustomEvent('data-health-updated', {detail}))", notice)
+        assert page.locator('#stale-banner').is_visible()
+        assert 'Example rate' in page.locator('#stale-body').inner_text()
+        page.locator('#stale-dismiss').click()
+        page.evaluate("detail => dispatchEvent(new CustomEvent('data-health-updated', {detail}))", notice)
+        assert page.locator('#stale-banner').is_hidden()
+        page.evaluate("detail => dispatchEvent(new CustomEvent('data-health-updated', {detail}))", healthy)
+        assert page.locator('#stale-banner').is_hidden()
+        results['health_notice_refresh_and_dismissal'] = 'passed'
 
         page.locator('#btn-open-calendar').click()
         page.locator('.cv-btn[data-view="list"]').click()
@@ -151,9 +210,12 @@ with tempfile.TemporaryDirectory(dir=OUT, prefix='profile-') as profile, sync_pl
         dimensions = page.evaluate("({width:innerWidth, scroll:document.documentElement.scrollWidth})")
         assert dimensions['scroll'] <= dimensions['width'] + 1, dimensions
         hero = page.locator('#hero-panel').bounding_box()
-        for selector in ['#hero-symbol', '#hero-date-from', '#hero-date-to', '#hero-export']:
+        for selector in ['#hero-symbol', '#hero-date-from', '#hero-date-to', '#hero-export', '[data-indicator="rsi"]', '[data-indicator="slow"]']:
             box = page.locator(selector).bounding_box()
             assert box['x'] >= hero['x'] and box['x'] + box['width'] <= hero['x'] + hero['width'] + 1, (selector, box, hero)
+        for key in ['rsi', 'fast', 'slow']:
+            assert page.locator(f'[data-indicator="{key}"]').get_attribute('aria-pressed') == 'true'
+        assert len(page.evaluate("echarts.getInstanceByDom(document.getElementById('hero-chart')).getOption().grid")) == 2
         page.locator('#hero-panel').screenshot(path=str(OUT / 'mobile-hero.png'))
         page.screenshot(path=str(OUT / 'mobile.png'))
         assert not errors, errors

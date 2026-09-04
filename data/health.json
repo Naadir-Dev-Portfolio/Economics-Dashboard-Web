@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-04T06:41:42+00:00",
+  "generated_at": "2026-09-04T07:38:24+00:00",
   "schema_version": 2,
   "totals": {
-    "ok": 10,
-    "warning": 1,
+    "ok": 11,
+    "warning": 0,
     "error": 0,
-    "runtime": 3,
-    "total": 14
+    "runtime": 2,
+    "total": 13
   },
   "sources": [
     {
@@ -45,7 +45,7 @@
       "archived": 2,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-09-03T21:15:29+00:00",
+      "last_fetch": "2026-09-04T06:59:05+00:00",
       "latest_data": "2026-09-03",
       "notes": "API with public CSV fallback. 2 historical-only series excluded from current-data counts."
     },
@@ -56,27 +56,18 @@
       "url": "https://data.bis.org/",
       "type": "Scheduled data fetch",
       "icon": "",
-      "status": "warning",
+      "status": "ok",
       "expected": 9,
-      "delivered": 8,
+      "delivered": 9,
       "available": 9,
-      "stale": 1,
+      "stale": 0,
       "retained": 0,
       "archived": 0,
       "missing": 0,
-      "issues": [
-        {
-          "id": "rba_rate",
-          "section": "rates",
-          "name": "Australia Cash Rate Target",
-          "reason": "overdue observation",
-          "period": "27 Aug 2026",
-          "last_success": "2026-09-03T21:14:45+00:00"
-        }
-      ],
-      "last_fetch": "2026-09-03T21:14:48+00:00",
+      "issues": [],
+      "last_fetch": "2026-09-04T06:59:04+00:00",
       "latest_data": "2026-09-01",
-      "notes": "National consumer prices and daily central-bank policy rates. 0 historical-only series excluded from current-data counts."
+      "notes": "National consumer prices and daily central-bank policy rates. Policy-rate observations are published weekly, with a 14-day observation-age allowance; successful refreshes are still required within 36 hours. 0 historical-only series excluded from current-data counts."
     },
     {
       "id": "ons",
@@ -219,19 +210,19 @@
       "url": "",
       "icon": "",
       "type": "Hourly news fetch",
-      "last_fetch": "2026-09-04T06:41:33+00:00",
+      "last_fetch": "2026-09-04T07:10:03+00:00",
       "status": "ok",
       "delivered": 14,
       "expected": 14,
       "sub_sources": {
-        "BBC Business": 48,
+        "BBC Business": 47,
         "BBC World": 31,
         "Guardian Biz": 40,
         "Guardian Econ": 20,
-        "Yahoo Finance": 50,
+        "Yahoo Finance": 49,
         "Reuters Biz": 69,
         "Reuters World": 66,
-        "AP Economy": 3,
+        "AP Economy": 4,
         "Bloomberg": 66,
         "Federal Reserve": 15,
         "Bank of England": 50,
@@ -239,21 +230,100 @@
         "CNBC Markets": 30,
         "MarketWatch": 10
       },
-      "notes": "200 retained articles; counts show responding feeds."
+      "feed_status": {
+        "BBC Business": {
+          "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "BBC World": {
+          "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Guardian Biz": {
+          "url": "https://www.theguardian.com/uk/business/rss",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Guardian Econ": {
+          "url": "https://www.theguardian.com/business/economics/rss",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Yahoo Finance": {
+          "url": "https://finance.yahoo.com/news/rssindex",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Reuters Biz": {
+          "url": "https://news.google.com/rss/search?q=when:24h+source:reuters.com+business&hl=en-US&gl=US&ceid=US:en",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Reuters World": {
+          "url": "https://news.google.com/rss/search?q=when:24h+source:reuters.com+world&hl=en-US&gl=US&ceid=US:en",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "AP Economy": {
+          "url": "https://news.google.com/rss/search?q=when:24h+source:apnews.com+economy&hl=en-US&gl=US&ceid=US:en",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Bloomberg": {
+          "url": "https://news.google.com/rss/search?q=when:24h+source:bloomberg.com&hl=en-US&gl=US&ceid=US:en",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Federal Reserve": {
+          "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "Bank of England": {
+          "url": "https://www.bankofengland.co.uk/rss/news",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "ECB": {
+          "url": "https://www.ecb.europa.eu/rss/press.xml",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "CNBC Markets": {
+          "url": "https://www.cnbc.com/id/15839069/device/rss/rss.html",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        },
+        "MarketWatch": {
+          "url": "http://feeds.marketwatch.com/marketwatch/topstories/",
+          "checked_at": "2026-09-04T07:10:03+00:00",
+          "status": "ok",
+          "last_success": "2026-09-04T07:10:03+00:00"
+        }
+      },
+      "issues": [],
+      "notes": "200 articles. Feed health measures successful HTTP/XML responses, not article count; failed feeds retain previously fetched headlines with original timestamps."
     },
     {
       "id": "coingecko",
       "name": "CoinGecko",
       "url": "https://www.coingecko.com/",
-      "notes": "Optional browser quotes. Each tile retains its own quote timestamp.",
-      "runtime": true,
-      "type": "Optional browser feed"
-    },
-    {
-      "id": "yahoo_proxy",
-      "name": "Yahoo browser quotes",
-      "url": "https://finance.yahoo.com/",
-      "notes": "Best-effort public proxy. Scheduled snapshots remain available when it fails.",
+      "notes": "Optional crypto quotes, polled once per minute while visible. Rate limits trigger progressively longer retries; timestamped snapshots remain available.",
       "runtime": true,
       "type": "Optional browser feed"
     },

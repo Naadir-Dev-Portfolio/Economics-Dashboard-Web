@@ -15,7 +15,7 @@ SOURCE_SPECS = {
     'fred': ('FRED', 'Federal Reserve Economic Data', 'https://fred.stlouisfed.org/', 'API with public CSV fallback.'),
     'yahoo': ('Yahoo Finance', 'Yahoo Finance daily history', 'https://finance.yahoo.com/', 'Daily market observations; exchange holidays do not create new observations.'),
     'ons': ('ONS', 'Office for National Statistics', 'https://www.ons.gov.uk/', 'Official reporting periods, publication dates and next releases are retained.'),
-    'bis': ('BIS', 'Bank for International Settlements', 'https://data.bis.org/', 'National consumer prices and daily central-bank policy rates.'),
+    'bis': ('BIS', 'Bank for International Settlements', 'https://data.bis.org/', 'National consumer prices and daily central-bank policy rates. Policy-rate observations are published weekly, with a 14-day observation-age allowance; successful refreshes are still required within 36 hours.'),
     'boe': ('Bank of England', 'Bank of England monetary statistics', 'https://www.bankofengland.co.uk/', 'Structured monetary-statistics CSV.'),
     'ecb': ('ECB', 'European Central Bank monetary statistics', 'https://data.ecb.europa.eu/', 'Seasonally adjusted euro-area M3.'),
     'eurostat': ('Eurostat', 'European statistical office', 'https://ec.europa.eu/eurostat/', 'Euro-area unemployment, seasonally adjusted.'),
@@ -24,8 +24,7 @@ SOURCE_SPECS = {
 }
 
 RUNTIME_SOURCES = [
-    {'id': 'coingecko', 'name': 'CoinGecko', 'url': 'https://www.coingecko.com/', 'notes': 'Optional browser quotes. Each tile retains its own quote timestamp.'},
-    {'id': 'yahoo_proxy', 'name': 'Yahoo browser quotes', 'url': 'https://finance.yahoo.com/', 'notes': 'Best-effort public proxy. Scheduled snapshots remain available when it fails.'},
+    {'id': 'coingecko', 'name': 'CoinGecko', 'url': 'https://www.coingecko.com/', 'notes': 'Optional crypto quotes, polled once per minute while visible. Rate limits trigger progressively longer retries; timestamped snapshots remain available.'},
     {'id': 'tradingview', 'name': 'TradingView', 'url': 'https://www.tradingview.com/', 'notes': 'Optional embedded market chart. Loading the iframe does not verify its quotes.'},
 ]
 
@@ -134,13 +133,17 @@ def build_news(now=None):
     payload = load('news.json')
     meta = payload.get('meta', {})
     subs = meta.get('by_source', {})
+    reports = meta.get('feed_status', {})
     age = hours_since(meta.get('generated_at'), now)
-    alive = sum(bool(v) for v in subs.values())
-    status = 'error' if not payload.get('items') or age is None or age > 24 else 'warning' if age > 3 or alive < len(subs) else 'ok'
+    alive = sum(report.get('status') == 'ok' for report in reports.values()) if reports else sum(bool(v) for v in subs.values())
+    expected = len(reports or subs)
+    issues = [{'name': name, 'reason': report.get('error', 'Feed unavailable'), 'last_success': report.get('last_success')}
+              for name, report in reports.items() if report.get('status') != 'ok']
+    status = 'error' if not alive or age is None or age > 24 else 'warning' if age > 3 or alive < expected else 'ok'
     return {'id': 'news', 'name': 'News (RSS)', 'full_name': 'RSS news feeds', 'url': '', 'icon': '',
             'type': 'Hourly news fetch', 'last_fetch': meta.get('generated_at'), 'status': status,
-            'delivered': alive, 'expected': len(subs), 'sub_sources': subs,
-            'notes': f"{len(payload.get('items', []))} retained articles; counts show responding feeds."}
+            'delivered': alive, 'expected': expected, 'sub_sources': subs, 'feed_status': reports, 'issues': issues,
+            'notes': f"{len(payload.get('items', []))} articles. Feed health measures successful HTTP/XML responses, not article count; failed feeds retain previously fetched headlines with original timestamps."}
 
 
 def build():
