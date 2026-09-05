@@ -133,7 +133,7 @@ The dashboard uses static files served over HTTP: `index.html`, `assets/` and `d
 
 ### Application model
 
-The workflow runs at 06:30 and 18:30 UTC for full data and hourly for news/calendars. It runs regression tests, fetches observations and published schedules, builds health, validates artifacts, commits data and explicitly publishes Pages. Source-quality failures are reported after valid updates are published.
+The workflow runs primary full-data refreshes at 06:37 and 18:37 UTC, with news/calendars at minute 7 each hour. Health-aware checks at 08:23 and 20:23 UTC recover a delayed or dropped primary schedule: they perform a full fetch only when the last full manifest is more than eight hours old or reports failed/stale series. This stagger avoids GitHub's busiest minute-zero window. Every run executes regression tests, validates artifacts, commits data and explicitly publishes Pages. Source-quality failures are reported after valid updates are published.
 
 In the browser, `main.js` loads static JSON. Hero and category panels share a local ECharts renderer with bounded dates, vertical grids, zoom and pan. The hero normalizes wheel input to small cursor-anchored steps. Its optional RSI(14), SMA(20) and SMA(50) use full native-frequency history, including observations before the visible range; zooming never changes the indicator periods. RSI has a synchronized 0-100 lower pane. Indicator choices persist locally, initially off. Every selector, tile and drill-down uses the exact section/series identity. Economic series keep their native frequency; optional TradingView feeds are separate. ECharts, Lucide and `technicalindicators` 3.1.0 are pinned local bundles with licenses.
 

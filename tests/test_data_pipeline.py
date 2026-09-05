@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import build_health
+import decide_fetch_mode
 import fetch_calendar as calendar
 import fetch_data
 import fetch_news
@@ -22,6 +23,27 @@ NOW = datetime(2026, 9, 3, tzinfo=UTC)
 
 
 class DataQualityTests(unittest.TestCase):
+    def test_fetch_mode_catch_up_is_health_and_age_aware(self):
+        now = datetime(2026, 9, 5, 10, tzinfo=UTC)
+        healthy = {'generated_at': '2026-09-05T06:37:00+00:00', 'totals': {'fail': 0, 'stale': 0}}
+        self.assertEqual(decide_fetch_mode.decide_mode('schedule', '7 * * * *', '', {}, now), 'news')
+        self.assertEqual(decide_fetch_mode.decide_mode('schedule', '37 6,18 * * *', '', healthy, now), 'all')
+        self.assertEqual(decide_fetch_mode.decide_mode('schedule', '23 8,20 * * *', '', healthy, now), 'news')
+        for manifest in [
+            {},
+            {'generated_at': 'invalid', 'totals': {}},
+            {'generated_at': '2026-09-05T01:59:00+00:00', 'totals': {}},
+            {'generated_at': '2026-09-05T11:00:00+00:00', 'totals': {}},
+            {'generated_at': '2026-09-05T09:00:00+00:00', 'totals': []},
+            {'generated_at': '2026-09-05T09:00:00+00:00', 'totals': {'fail': 'invalid'}},
+            {'generated_at': '2026-09-05T09:00:00+00:00', 'totals': {'fail': 1}},
+            {'generated_at': '2026-09-05T09:00:00+00:00', 'totals': {'stale': 1}},
+        ]:
+            self.assertEqual(decide_fetch_mode.decide_mode('schedule', '23 8,20 * * *', '', manifest, now), 'all')
+        self.assertEqual(decide_fetch_mode.decide_mode('workflow_dispatch', '', 'data', {}, now), 'data')
+        self.assertEqual(decide_fetch_mode.decide_mode('workflow_dispatch', '', 'invalid', {}, now), 'all')
+        self.assertEqual(decide_fetch_mode.decide_mode('push', '', '', {}, now), 'all')
+
     def test_retry_logs_redact_api_credentials(self):
         record = logging.LogRecord('urllib3.connectionpool', logging.WARNING, __file__, 1,
                                    'Retrying %s', ('https://api.stlouisfed.org/fred/release/dates?api_key=test-secret&file_type=json',), None)

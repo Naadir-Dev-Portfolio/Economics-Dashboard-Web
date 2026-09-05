@@ -2,10 +2,11 @@ name: Refresh economic data
 
 on:
   schedule:
-    # Data twice daily. News every hour (separate workflow could split, but
-    # cheaper to combine into one cron).
-    - cron: "30 6,18 * * *"   # full refresh: data + news
-    - cron: "0 */1 * * *"     # news only (skips heavy data work)
+    # Stagger schedules away from minute zero, where GitHub documents higher
+    # load. Catch-ups only run a full fetch when the manifest is unhealthy/old.
+    - cron: "37 6,18 * * *"    # primary full refresh: data + news
+    - cron: "7 * * * *"        # news only (skips heavy data work)
+    - cron: "23 8,20 * * *"    # health-aware full-refresh catch-up
   workflow_dispatch:
     inputs:
       mode:
@@ -63,19 +64,11 @@ jobs:
 
       - name: Decide fetch mode
         id: mode
-        run: |
-          # Determine what to run:
-          #  - manual dispatch  → uses inputs.mode
-          #  - hourly cron      → news only
-          #  - 6/18 cron        → all
-          #  - push             → all (so config changes take effect immediately)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "mode=${{ inputs.mode }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event.schedule }}" = "0 */1 * * *" ]; then
-            echo "mode=news" >> $GITHUB_OUTPUT
-          else
-            echo "mode=all" >> $GITHUB_OUTPUT
-          fi
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+          DISPATCH_MODE: ${{ inputs.mode }}
+        run: python scripts/decide_fetch_mode.py
 
       - name: Fetch market & macro data
         if: steps.mode.outputs.mode != 'news'
