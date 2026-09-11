@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-11T21:16:34+00:00",
-  "duration_sec": 58.1,
+  "generated_at": "2026-09-11T22:39:17+00:00",
+  "duration_sec": 53.5,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -52,8 +52,8 @@
       "blurb": "How much money is sloshing around the system.",
       "file": "data/money.json",
       "series_count": 10,
-      "ok": 10,
-      "fail": 0,
+      "ok": 8,
+      "fail": 2,
       "stale": 0,
       "archived": 1
     },
@@ -126,8 +126,8 @@
   },
   "schema_version": 2,
   "totals": {
-    "ok": 165,
-    "fail": 1,
+    "ok": 163,
+    "fail": 3,
     "stale": 0,
     "archived": 2
   }
