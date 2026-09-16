@@ -82,27 +82,33 @@ def build_series_sources(now=None):
             state = freshness(item, config, now)
             age = hours_since(item.get('last_success'), now)
             reasons = []
+            critical = False
             if state in ('missing', 'invalid'):
                 bucket['missing'] += 1
                 reasons.append(state)
+                critical = True
             elif state == 'stale':
                 bucket['stale'] += 1
                 reasons.append('overdue observation')
+                critical = True
             if item.get('fetch_status') == 'retained':
                 bucket['retained'] += 1
                 reasons.append('fetch failed; previous data retained')
-            elif age is None or age > 36:
+            if age is None or age > 36:
                 reasons.append('refresh overdue')
+                critical = True
             if reasons:
                 bucket['issues'].append({'id': config['id'], 'section': section,
                                          'name': config['name'], 'reason': '; '.join(reasons),
-                                         'period': item.get('period_label'), 'last_success': item.get('last_success')})
+                                         'period': item.get('period_label'), 'last_success': item.get('last_success'),
+                                         'severity': 'error' if critical else 'warning'})
             else:
                 bucket['delivered'] += 1
     result = []
     for method, bucket in buckets.items():
         name, full_name, url, notes = SOURCE_SPECS.get(method, (method, method, '', 'Unclassified source.'))
-        status = 'ok' if bucket['delivered'] == bucket['expected'] else 'warning' if bucket['delivered'] else 'error'
+        status = ('error' if any(issue['severity'] == 'error' for issue in bucket['issues']) else
+                  'warning' if bucket['issues'] else 'ok')
         result.append({'id': method, 'name': name, 'full_name': full_name, 'url': url,
                        'type': 'Scheduled data fetch', 'icon': '', 'status': status, **bucket,
                        'notes': notes + f" {bucket['archived']} historical-only series excluded from current-data counts."})
@@ -119,7 +125,8 @@ def build_calendar(now=None):
         future = [e for e in payload.get('events', []) if e.get('key') == key and datetime.fromisoformat(e['datetime']) > now]
         if source.get('status') != 'ok' or not future:
             issues.append({'name': key, 'reason': 'verified cache' if future else 'no published future dates',
-                           'period': source.get('through'), 'last_success': source.get('last_verified')})
+                           'period': source.get('through'), 'last_success': source.get('last_verified'),
+                           'severity': 'warning'})
     age = hours_since(meta.get('generated_at'), now)
     status = 'error' if not reports or age is None or age > 72 else 'warning' if issues or age > 36 else 'ok'
     return {'id': 'calendar', 'name': 'Economic Calendar', 'full_name': 'Official release calendars',
@@ -137,7 +144,8 @@ def build_news(now=None):
     age = hours_since(meta.get('generated_at'), now)
     alive = sum(report.get('status') == 'ok' for report in reports.values()) if reports else sum(bool(v) for v in subs.values())
     expected = len(reports or subs)
-    issues = [{'name': name, 'reason': report.get('error', 'Feed unavailable'), 'last_success': report.get('last_success')}
+    issues = [{'name': name, 'reason': report.get('error', 'Feed unavailable'),
+               'last_success': report.get('last_success'), 'severity': 'warning'}
               for name, report in reports.items() if report.get('status') != 'ok']
     status = 'error' if not alive or age is None or age > 24 else 'warning' if age > 3 or alive < expected else 'ok'
     return {'id': 'news', 'name': 'News (RSS)', 'full_name': 'RSS news feeds', 'url': '', 'icon': '',

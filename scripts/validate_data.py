@@ -57,32 +57,44 @@ def validate(root=DATA):
 def report(root=DATA):
     health = json.loads((root / 'health.json').read_text(encoding='utf-8'))
     lines = ['## Data quality', '', '| Source | Current / Expected | Status |', '| --- | --- | --- |']
-    action_needed = []
+    errors = []
+    warnings = []
     issue_lines = []
     for source in health['sources']:
         if source.get('runtime'):
             continue
         lines.append(f"| {source['name']} | {source.get('delivered', 0)} / {source.get('expected', 0)} | {source.get('status')} |")
+        source_errors = 0
         for issue in source.get('issues', []):
             message = f"{issue['name']}: {issue['reason']} ({issue.get('period') or 'no observation'})"
             issue_lines.append(f"- {message}")
             if issue['reason'] != 'verified cache':
-                action_needed.append(message)
-        if source.get('status') == 'error':
-            action_needed.append(source['name'] + ': source unavailable')
+                severity = issue.get('severity', 'error' if source.get('status') == 'error' else 'warning')
+                if severity == 'error':
+                    errors.append(message)
+                    source_errors += 1
+                else:
+                    warnings.append(message)
+        if source.get('status') == 'error' and not source_errors:
+            errors.append(source['name'] + ': critical source-health failure')
     output = '\n'.join(lines + (['', '### Source notes', ''] + issue_lines if issue_lines else [])) + '\n'
     print(output)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as handle:
             handle.write(output)
-    return action_needed
+    return errors, warnings
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--report', action='store_true')
     args = parser.parse_args()
-    problems = report() if args.report else validate()
+    if args.report:
+        problems, warnings = report()
+        for warning in warnings:
+            print('::warning::' + warning)
+    else:
+        problems = validate()
     for problem in problems:
         print('::error::' + problem)
     if not args.report and not problems:

@@ -15,6 +15,7 @@ import decide_fetch_mode
 import fetch_calendar as calendar
 import fetch_data
 import fetch_news
+import validate_data
 from data_quality import compute_stats, freshness, period_label, to_ms, validate_points, write_json, yoy
 from source_providers import redact_credentials, sdmx_points
 
@@ -270,7 +271,39 @@ class FetchTests(unittest.TestCase):
         with patch.object(build_health, 'SECTIONS', config), patch.object(build_health, 'load', return_value=payload):
             source = build_health.build_series_sources(NOW)[0]
         self.assertEqual((source['delivered'], source['expected'], source['stale']), (1, 2, 1))
-        self.assertEqual(source['status'], 'warning')
+        self.assertEqual(source['status'], 'error')
+        self.assertEqual(source['issues'][0]['severity'], 'error')
+
+    def test_recent_retained_data_warns_but_overdue_refresh_fails(self):
+        config = {'test': {'series': [{'id': 'example', 'name': 'Example', 'fred': 'EXAMPLE'}]}}
+        item = {'data': [[to_ms('2026-07-01'), 1]], 'stats': {'last_date': '2026-07-01'},
+                'frequency': 'm', 'method': 'fred', 'fetch_status': 'retained'}
+        with patch.object(build_health, 'SECTIONS', config):
+            recent = {'series': {'example': {**item, 'last_success': (NOW - timedelta(hours=1)).isoformat()}}}
+            with patch.object(build_health, 'load', return_value=recent):
+                source = build_health.build_series_sources(NOW)[0]
+            self.assertEqual(source['status'], 'warning')
+            self.assertEqual(source['issues'][0]['severity'], 'warning')
+            overdue = {'series': {'example': {**item, 'last_success': (NOW - timedelta(hours=37)).isoformat()}}}
+            with patch.object(build_health, 'load', return_value=overdue):
+                source = build_health.build_series_sources(NOW)[0]
+            self.assertEqual(source['status'], 'error')
+            self.assertEqual(source['issues'][0]['severity'], 'error')
+            self.assertIn('refresh overdue', source['issues'][0]['reason'])
+
+    def test_health_report_only_fails_critical_conditions(self):
+        health = {'sources': [
+            {'name': 'Partial feed', 'status': 'warning', 'delivered': 13, 'expected': 14,
+             'issues': [{'name': 'One feed', 'reason': 'temporary failure', 'severity': 'warning'}]},
+            {'name': 'Core data', 'status': 'error', 'delivered': 0, 'expected': 1,
+             'issues': [{'name': 'Core series', 'reason': 'refresh overdue', 'severity': 'error'}]},
+        ]}
+        (ROOT / '.cache').mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / '.cache') as directory:
+            write_json(Path(directory) / 'health.json', health)
+            errors, warnings = validate_data.report(Path(directory))
+        self.assertEqual(errors, ['Core series: refresh overdue (no observation)'])
+        self.assertEqual(warnings, ['One feed: temporary failure (no observation)'])
 
 
 class CalendarTests(unittest.TestCase):

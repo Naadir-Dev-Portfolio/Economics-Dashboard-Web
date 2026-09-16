@@ -126,23 +126,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # GITHUB_TOKEN pushes do not automatically trigger branch-based Pages.
-          gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
           expected=$(git rev-parse HEAD)
+          if response=$(gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" 2>&1); then
+            echo "$response"
+          else
+            echo "::warning::Pages build request was not accepted immediately: $response"
+          fi
           for attempt in $(seq 1 20); do
             sleep 15
-            build=$(gh api "repos/$GITHUB_REPOSITORY/pages/builds/latest")
-            status=$(jq -r .status <<< "$build")
-            commit=$(jq -r .commit <<< "$build")
-            if [ "$commit" = "$expected" ] && [ "$status" = "built" ]; then
+            if ! builds=$(gh api "repos/$GITHUB_REPOSITORY/pages/builds?per_page=100"); then
+              echo "::warning::Could not read Pages build status (attempt $attempt of 20)."
+              continue
+            fi
+            if jq -e --arg expected "$expected" \
+              'any(.[]; .commit == $expected and .status == "built")' \
+              <<< "$builds" >/dev/null; then
               echo "Published Pages at $expected."
               exit 0
             fi
-            if [ "$commit" = "$expected" ] && [ "$status" = "errored" ]; then
-              echo "::error::GitHub Pages build failed."
-              exit 1
-            fi
+            statuses=$(jq -r --arg expected "$expected" \
+              '[.[] | select(.commit == $expected) | .status] | unique | join(", ")' \
+              <<< "$builds")
+            echo "Waiting for Pages at $expected (matching builds: ${statuses:-none})."
           done
-          echo "::error::Timed out waiting for the updated Pages build."
+          echo "::error::Timed out waiting for a successful Pages build at $expected (matching builds: ${statuses:-none})."
           exit 1
 
       - name: Report source health
