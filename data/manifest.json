@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-21T22:11:46+00:00",
-  "duration_sec": 60.0,
+  "generated_at": "2026-09-21T23:21:31+00:00",
+  "duration_sec": 64.9,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -85,8 +85,8 @@
       "blurb": "Exchange rates and the dollar's grip on global liquidity.",
       "file": "data/fx.json",
       "series_count": 16,
-      "ok": 15,
-      "fail": 1,
+      "ok": 6,
+      "fail": 10,
       "stale": 0,
       "archived": 0
     },
@@ -126,8 +126,8 @@
   },
   "schema_version": 2,
   "totals": {
-    "ok": 163,
-    "fail": 3,
+    "ok": 154,
+    "fail": 12,
     "stale": 0,
     "archived": 2
   }
