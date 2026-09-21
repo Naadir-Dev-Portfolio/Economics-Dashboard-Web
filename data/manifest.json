@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-20T22:31:34+00:00",
-  "duration_sec": 84.3,
+  "generated_at": "2026-09-21T13:18:55+00:00",
+  "duration_sec": 54.0,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -8,8 +8,8 @@
       "blurb": "Major global stock indices. The pulse of risk appetite.",
       "file": "data/markets.json",
       "series_count": 17,
-      "ok": 16,
-      "fail": 1,
+      "ok": 17,
+      "fail": 0,
       "stale": 0,
       "archived": 0
     },
@@ -126,8 +126,8 @@
   },
   "schema_version": 2,
   "totals": {
-    "ok": 165,
-    "fail": 1,
+    "ok": 166,
+    "fail": 0,
     "stale": 0,
     "archived": 2
   }
