@@ -308,7 +308,8 @@ class FetchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT / '.cache') as directory:
             write_json(Path(directory) / 'health.json', health)
             errors, warnings = validate_data.report(Path(directory))
-            self.assertEqual(validate_data.emit_report(Path(directory), data_warnings_only=True), [])
+            with patch('builtins.print'):
+                self.assertEqual(validate_data.emit_report(Path(directory), data_warnings_only=True), [])
         self.assertEqual(errors, ['Core series: refresh overdue (no observation)'])
         self.assertEqual(warnings, ['One feed: temporary failure (no observation)'])
 
