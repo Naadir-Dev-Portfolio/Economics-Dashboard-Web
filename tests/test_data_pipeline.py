@@ -87,6 +87,12 @@ class DataQualityTests(unittest.TestCase):
         self.assertEqual(freshness(series, now=NOW), 'stale')
         self.assertEqual(freshness(series, {'archived': True}, NOW), 'archived')
 
+    def test_uk_quarterly_gdp_uses_current_economic_accounts_dataset(self):
+        configs = {item['id']: item for item in fetch_data.SECTIONS['macro']['series']}
+        for series_id in ('uk_gdp', 'uk_gdp_yoy'):
+            self.assertEqual(configs[series_id]['ons'], 'ABMI')
+            self.assertEqual(configs[series_id]['ons_dataset'], 'ukea')
+
     def test_daily_freshness_uses_whole_calendar_days(self):
         now = datetime(2026, 9, 4, 23, 59, 59, tzinfo=UTC)
         series = {'frequency': 'd', 'stats': {'last_date': '2026-08-28'}}
@@ -295,15 +301,28 @@ class FetchTests(unittest.TestCase):
         health = {'sources': [
             {'name': 'Partial feed', 'status': 'warning', 'delivered': 13, 'expected': 14,
              'issues': [{'name': 'One feed', 'reason': 'temporary failure', 'severity': 'warning'}]},
-            {'name': 'Core data', 'status': 'error', 'delivered': 0, 'expected': 1,
+            {'name': 'Core data', 'type': 'Scheduled data fetch', 'status': 'error', 'delivered': 0, 'expected': 1,
              'issues': [{'name': 'Core series', 'reason': 'refresh overdue', 'severity': 'error'}]},
         ]}
         (ROOT / '.cache').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / '.cache') as directory:
             write_json(Path(directory) / 'health.json', health)
             errors, warnings = validate_data.report(Path(directory))
+            self.assertEqual(validate_data.emit_report(Path(directory), data_warnings_only=True), [])
         self.assertEqual(errors, ['Core series: refresh overdue (no observation)'])
         self.assertEqual(warnings, ['One feed: temporary failure (no observation)'])
+
+    def test_data_warnings_only_does_not_hide_news_failure(self):
+        health = {'sources': [
+            {'name': 'News (RSS)', 'type': 'Hourly news fetch', 'status': 'error',
+             'delivered': 0, 'expected': 14, 'issues': []},
+        ]}
+        (ROOT / '.cache').mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=ROOT / '.cache') as directory:
+            write_json(Path(directory) / 'health.json', health)
+            errors, warnings = validate_data.report(Path(directory), data_warnings_only=True)
+        self.assertEqual(errors, ['News (RSS): critical source-health failure'])
+        self.assertEqual(warnings, [])
 
 
 class CalendarTests(unittest.TestCase):

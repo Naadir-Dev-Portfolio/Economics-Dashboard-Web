@@ -54,7 +54,7 @@ def validate(root=DATA):
     return errors
 
 
-def report(root=DATA):
+def report(root=DATA, data_warnings_only=False):
     health = json.loads((root / 'health.json').read_text(encoding='utf-8'))
     lines = ['## Data quality', '', '| Source | Current / Expected | Status |', '| --- | --- | --- |']
     errors = []
@@ -65,18 +65,20 @@ def report(root=DATA):
             continue
         lines.append(f"| {source['name']} | {source.get('delivered', 0)} / {source.get('expected', 0)} | {source.get('status')} |")
         source_errors = 0
+        soften_errors = data_warnings_only and source.get('type') == 'Scheduled data fetch'
         for issue in source.get('issues', []):
             message = f"{issue['name']}: {issue['reason']} ({issue.get('period') or 'no observation'})"
             issue_lines.append(f"- {message}")
             if issue['reason'] != 'verified cache':
                 severity = issue.get('severity', 'error' if source.get('status') == 'error' else 'warning')
                 if severity == 'error':
-                    errors.append(message)
                     source_errors += 1
+                    (warnings if soften_errors else errors).append(message)
                 else:
                     warnings.append(message)
         if source.get('status') == 'error' and not source_errors:
-            errors.append(source['name'] + ': critical source-health failure')
+            message = source['name'] + ': critical source-health failure'
+            (warnings if soften_errors else errors).append(message)
     output = '\n'.join(lines + (['', '### Source notes', ''] + issue_lines if issue_lines else [])) + '\n'
     print(output)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
@@ -85,18 +87,29 @@ def report(root=DATA):
     return errors, warnings
 
 
+def emit_report(root=DATA, data_warnings_only=False):
+    errors, warnings = report(root, data_warnings_only=data_warnings_only)
+    for warning in warnings:
+        print('::warning::' + warning)
+    for error in errors:
+        print('::error::' + error)
+    return errors
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--report', action='store_true')
+    parser.add_argument('--data-warnings-only', action='store_true',
+                        help='Do not fail on scheduled data sources that this run did not refresh')
     args = parser.parse_args()
     if args.report:
-        problems, warnings = report()
-        for warning in warnings:
-            print('::warning::' + warning)
+        problems = emit_report(data_warnings_only=args.data_warnings_only)
     else:
+        if args.data_warnings_only:
+            parser.error('--data-warnings-only requires --report')
         problems = validate()
-    for problem in problems:
-        print('::error::' + problem)
+        for problem in problems:
+            print('::error::' + problem)
     if not args.report and not problems:
         print('Validated all observations, statistics and published calendar entries.')
     raise SystemExit(1 if problems else 0)

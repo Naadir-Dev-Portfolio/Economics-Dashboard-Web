@@ -256,8 +256,8 @@ SECTIONS = {
         "series": [
             {"id": "us_gdp",       "name": "US Real GDP",         "region": "US", "unit": "$bn", "fred": "GDPC1",   "freq": "q"},
             {"id": "us_gdp_yoy",   "name": "US GDP Growth YoY",   "region": "US", "unit": "%",   "fred": "GDPC1",   "freq": "q", "transform": "yoy_pct"},
-            {"id": "uk_gdp",       "name": "UK Real GDP",         "region": "UK", "unit": "£bn", "ons": "ABMI", "ons_dataset": "pn2", "ons_path": "economy/grossdomesticproductgdp", "freq": "q", "scale": 0.001},
-            {"id": "uk_gdp_yoy",   "name": "UK GDP Growth YoY",   "region": "UK", "unit": "%", "ons": "ABMI", "ons_dataset": "pn2", "ons_path": "economy/grossdomesticproductgdp", "freq": "q", "transform": "yoy_pct"},
+            {"id": "uk_gdp",       "name": "UK Real GDP",         "region": "UK", "unit": "£bn", "ons": "ABMI", "ons_dataset": "ukea", "ons_path": "economy/grossdomesticproductgdp", "freq": "q", "scale": 0.001, "note": "ONS UK Economic Accounts quarterly chained-volume GDP, including the latest official revisions."},
+            {"id": "uk_gdp_yoy",   "name": "UK GDP Growth YoY",   "region": "UK", "unit": "%", "ons": "ABMI", "ons_dataset": "ukea", "ons_path": "economy/grossdomesticproductgdp", "freq": "q", "transform": "yoy_pct", "note": "Calculated from the ONS UK Economic Accounts quarterly chained-volume GDP series."},
             {"id": "uk_gdp_monthly", "name": "UK Monthly GDP Growth", "region": "UK", "unit": "%", "ons": "ECYX", "ons_dataset": "mgdp", "ons_path": "economy/grossdomesticproductgdp", "note": "ONS monthly GDP, chained volume measure, seasonally adjusted; change on previous month."},
             {"id": "de_gdp",       "name": "Germany Real GDP",    "region": "DE", "unit": "€bn", "fred": "CLVMNACSCAB1GQDE", "freq": "q", "scale": 0.001},
             {"id": "jp_gdp",       "name": "Japan Real GDP",      "region": "JP", "unit": "¥bn", "fred": "JPNRGDPEXP","freq": "q"},

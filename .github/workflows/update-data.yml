@@ -132,10 +132,11 @@ jobs:
           else
             echo "::warning::Pages build request was not accepted immediately: $response"
           fi
-          for attempt in $(seq 1 20); do
+          # Pages occasionally remains in "building" for more than five minutes.
+          for attempt in $(seq 1 40); do
             sleep 15
             if ! builds=$(gh api "repos/$GITHUB_REPOSITORY/pages/builds?per_page=100"); then
-              echo "::warning::Could not read Pages build status (attempt $attempt of 20)."
+              echo "::warning::Could not read Pages build status (attempt $attempt of 40)."
               continue
             fi
             if jq -e --arg expected "$expected" \
@@ -154,4 +155,13 @@ jobs:
 
       - name: Report source health
         if: always()
-        run: python scripts/validate_data.py --report
+        env:
+          FETCH_MODE: ${{ steps.mode.outputs.mode }}
+        run: |
+          # Hourly news runs cannot repair core-series health, so they annotate
+          # existing problems without generating duplicate failure emails.
+          if [ "$FETCH_MODE" = "news" ]; then
+            python scripts/validate_data.py --report --data-warnings-only
+          else
+            python scripts/validate_data.py --report
+          fi
