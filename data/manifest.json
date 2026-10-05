@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T15:14:49+00:00",
+  "generated_at": "2026-10-05T16:18:42+00:00",
   "duration_sec": 51.4,
   "sections": {
     "markets": {
@@ -109,7 +109,7 @@
       "series_count": 13,
       "ok": 13,
       "fail": 0,
-      "stale": 2,
+      "stale": 0,
       "archived": 0
     },
     "risk": {
@@ -128,7 +128,7 @@
   "totals": {
     "ok": 166,
     "fail": 0,
-    "stale": 2,
+    "stale": 0,
     "archived": 2
   }
 }
