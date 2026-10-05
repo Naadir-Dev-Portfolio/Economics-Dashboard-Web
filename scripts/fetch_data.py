@@ -417,8 +417,8 @@ def fetch_one(s: dict, previous: dict | None = None) -> dict | None:
     """Fetch a single series and return the JSON-ready dict, or None on failure."""
     sid = s['id']
     providers = []
-    def ons_result():
-        dataset, freq = s.get('ons_dataset', 'lms'), s.get('freq', 'm')
+    def ons_result(dataset):
+        freq = s.get('freq', 'm')
         data = fetch_ons(s['ons'], dataset, s['ons_path'], freq)
         return data, {'source': f"ONS ({s['ons']})", **_ONS_META.get((s['ons'], dataset, freq), {})}
 
@@ -433,7 +433,8 @@ def fetch_one(s: dict, previous: dict | None = None) -> dict | None:
     if s.get('eurostat'):
         providers.append(('eurostat', euro_unemployment))
     if s.get('ons'):
-        providers.append(('ons', ons_result))
+        datasets = s.get('ons_datasets') or [s.get('ons_dataset', 'lms')]
+        providers.extend(('ons', lambda dataset=dataset: ons_result(dataset)) for dataset in datasets)
     if s.get('yahoo'):
         providers.append(('yahoo', lambda: (fetch_yahoo(s['yahoo']), {'source': f"Yahoo Finance ({s['yahoo']})", 'frequency': 'd', 'source_url': f"https://finance.yahoo.com/quote/{s['yahoo']}/history/", **_YAHOO_META.get(s['yahoo'], {})})))
     if s.get('fred'):

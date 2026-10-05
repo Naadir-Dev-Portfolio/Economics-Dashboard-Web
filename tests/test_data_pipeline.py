@@ -91,7 +91,7 @@ class DataQualityTests(unittest.TestCase):
         configs = {item['id']: item for item in fetch_data.SECTIONS['macro']['series']}
         for series_id in ('uk_gdp', 'uk_gdp_yoy'):
             self.assertEqual(configs[series_id]['ons'], 'ABMI')
-            self.assertEqual(configs[series_id]['ons_dataset'], 'ukea')
+            self.assertEqual(configs[series_id]['ons_datasets'], ['pn2', 'ukea'])
 
     def test_daily_freshness_uses_whole_calendar_days(self):
         now = datetime(2026, 9, 4, 23, 59, 59, tzinfo=UTC)
@@ -185,6 +185,26 @@ class FetchTests(unittest.TestCase):
         with patch.object(fetch_data, 'fetch_ons', return_value=points), patch.object(fetch_data, 'fetch_fred', return_value=[]):
             result = fetch_data.fetch_one(config)
         self.assertEqual(result['stats']['last_value'], 2.9)
+
+    def test_ons_dataset_fallback_skips_an_overdue_release(self):
+        config = {'id': 'gdp', 'name': 'GDP', 'unit': 'index', 'ons': 'TEST',
+                  'ons_datasets': ['preliminary', 'revised'], 'ons_path': 'economy/gdp', 'freq': 'q'}
+        points = [[to_ms('2026-01-01'), 100], [to_ms('2026-04-01'), 101]]
+
+        def fake_fetch(series_id, dataset, path, frequency):
+            fetch_data._ONS_META[(series_id, dataset, frequency)] = {
+                'frequency': frequency, 'source_url': f'https://example.com/{dataset}',
+            }
+            return points
+
+        def fake_freshness(result, _config):
+            return 'current' if result['source_url'].endswith('/revised') else 'stale'
+
+        with patch.object(fetch_data, 'fetch_ons', side_effect=fake_fetch) as fetch, \
+             patch.object(fetch_data, 'freshness', side_effect=fake_freshness):
+            result = fetch_data.fetch_one(config)
+        self.assertTrue(result['source_url'].endswith('/revised'))
+        self.assertEqual([call.args[1] for call in fetch.call_args_list], ['preliminary', 'revised'])
 
     def test_claims_counts_are_scaled_to_displayed_thousands(self):
         config = next(s for s in fetch_data.SECTIONS['employment']['series'] if s['id'] == 'us_claims')
