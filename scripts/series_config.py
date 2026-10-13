@@ -80,7 +80,7 @@ SECTIONS = {
             {"id": "boj_rate",   "name": "Japan Policy Rate",    "region": "JP", "unit": "%", "bis_policy": "JP", "max_age_days": 14, "note": "BIS daily observations, released weekly with a reporting lag; sourced from the Bank of Japan."},
             {"id": "boc_rate",   "name": "Canada Overnight Target", "region": "CA", "unit": "%", "bis_policy": "CA", "max_age_days": 14, "note": "BIS daily observations, released weekly with a reporting lag."},
             {"id": "snb_rate",   "name": "Swiss 3-Month Rate",   "region": "CH", "unit": "%", "fred": "IR3TIB01CHM156N"},
-            {"id": "rba_rate",   "name": "Australia Cash Rate Target", "region": "AU", "unit": "%", "bis_policy": "AU", "max_age_days": 14, "note": "BIS daily observations, released weekly with a reporting lag."},
+            {"id": "rba_rate",   "name": "Australia Cash Rate Target", "region": "AU", "unit": "%", "rba_cash_rate": True, "bis_policy": "AU", "max_age_days": 14, "note": "Official RBA cash rate target expanded from effective dates; BIS is retained as a fallback."},
             {"id": "sec_overnight", "name": "US SOFR",           "region": "US", "unit": "%", "fred": "SOFR",            "note": "Successor to LIBOR (since 2018)."},
             {"id": "real_rate",  "name": "US 10-Year Real Interest Rate", "region": "US", "unit": "%", "fred": "REAINTRATREARAT10Y", "note": "Model estimate of the 10-year real interest rate."},
         ],

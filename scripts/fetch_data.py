@@ -42,7 +42,7 @@ sys.path.insert(0, str(HERE))
 from series_config import SECTIONS, EVENTS  # noqa: E402
 from data_quality import (SCHEMA_VERSION, validate_points, frequency_of, freshness,
                           period_label, compute_stats, yoy, write_json, to_ms)
-from source_providers import (get, bis_cpi, bis_policy, boe_money, ecb_money,
+from source_providers import (get, bis_cpi, bis_policy, rba_cash_rate, boe_money, ecb_money,
                               euro_unemployment)
 
 DATA_DIR = ROOT / "data"
@@ -424,6 +424,8 @@ def fetch_one(s: dict, previous: dict | None = None) -> dict | None:
 
     if s.get('bis_cpi'):
         providers.append(('bis', lambda: bis_cpi(s['bis_cpi'])))
+    if s.get('rba_cash_rate'):
+        providers.append(('rba', rba_cash_rate))
     if s.get('bis_policy'):
         providers.append(('bis', lambda: bis_policy(s['bis_policy'])))
     if s.get('boe_money'):

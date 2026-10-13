@@ -54,7 +54,7 @@ def validate(root=DATA):
     return errors
 
 
-def report(root=DATA, data_warnings_only=False):
+def report(root=DATA, data_warnings_only=False, warnings_only=False):
     health = json.loads((root / 'health.json').read_text(encoding='utf-8'))
     lines = ['## Data quality', '', '| Source | Current / Expected | Status |', '| --- | --- | --- |']
     errors = []
@@ -65,7 +65,7 @@ def report(root=DATA, data_warnings_only=False):
             continue
         lines.append(f"| {source['name']} | {source.get('delivered', 0)} / {source.get('expected', 0)} | {source.get('status')} |")
         source_errors = 0
-        soften_errors = data_warnings_only and source.get('type') == 'Scheduled data fetch'
+        soften_errors = warnings_only or (data_warnings_only and source.get('type') == 'Scheduled data fetch')
         for issue in source.get('issues', []):
             message = f"{issue['name']}: {issue['reason']} ({issue.get('period') or 'no observation'})"
             issue_lines.append(f"- {message}")
@@ -87,8 +87,8 @@ def report(root=DATA, data_warnings_only=False):
     return errors, warnings
 
 
-def emit_report(root=DATA, data_warnings_only=False):
-    errors, warnings = report(root, data_warnings_only=data_warnings_only)
+def emit_report(root=DATA, data_warnings_only=False, warnings_only=False):
+    errors, warnings = report(root, data_warnings_only=data_warnings_only, warnings_only=warnings_only)
     for warning in warnings:
         print('::warning::' + warning)
     for error in errors:
@@ -101,12 +101,14 @@ if __name__ == '__main__':
     parser.add_argument('--report', action='store_true')
     parser.add_argument('--data-warnings-only', action='store_true',
                         help='Do not fail on scheduled data sources that this run did not refresh')
+    parser.add_argument('--warnings-only', action='store_true',
+                        help='Report every upstream source-health issue without failing the workflow')
     args = parser.parse_args()
     if args.report:
-        problems = emit_report(data_warnings_only=args.data_warnings_only)
+        problems = emit_report(data_warnings_only=args.data_warnings_only, warnings_only=args.warnings_only)
     else:
-        if args.data_warnings_only:
-            parser.error('--data-warnings-only requires --report')
+        if args.data_warnings_only or args.warnings_only:
+            parser.error('--data-warnings-only and --warnings-only require --report')
         problems = validate()
         for problem in problems:
             print('::error::' + problem)

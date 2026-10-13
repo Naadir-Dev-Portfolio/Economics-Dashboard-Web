@@ -155,13 +155,7 @@ jobs:
 
       - name: Report source health
         if: always()
-        env:
-          FETCH_MODE: ${{ steps.mode.outputs.mode }}
         run: |
-          # Hourly news runs cannot repair core-series health, so they annotate
-          # existing problems without generating duplicate failure emails.
-          if [ "$FETCH_MODE" = "news" ]; then
-            python scripts/validate_data.py --report --data-warnings-only
-          else
-            python scripts/validate_data.py --report
-          fi
+          # Upstream publication delays remain visible in the summary and on
+          # Data Health. Only pipeline faults should generate workflow-failure email.
+          python scripts/validate_data.py --report --warnings-only

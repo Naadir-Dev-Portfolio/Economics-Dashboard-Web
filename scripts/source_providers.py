@@ -3,9 +3,13 @@ import csv
 import io
 import logging
 import re
+import time
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 
 import requests
+from bs4 import BeautifulSoup
+from curl_cffi import requests as browser_requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -73,6 +77,65 @@ def bis_policy(country):
     url = 'https://stats.bis.org/api/v1/data/WS_CBPOL/D.GB+JP+CA+AU?format=csv&startPeriod=1970-01-01&detail=dataonly'
     return sdmx_points(csv_rows(url), {'REF_AREA': country}), {
         'source': f'BIS central bank policy rate ({country})', 'source_url': 'https://data.bis.org/topics/CBPOL', 'frequency': 'd',
+    }
+
+
+RBA_CASH_RATE_URL = 'https://www.rba.gov.au/statistics/cash-rate/'
+
+
+def rba_cash_rate_points(html, through=None):
+    """Expand the RBA's effective-date table into a daily target-rate series."""
+    through = through or datetime.now(timezone.utc).date()
+    decisions = {}
+    soup = BeautifulSoup(html, 'html.parser')
+    for row in soup.select('table tbody tr'):
+        cells = row.find_all(['th', 'td'], recursive=False)
+        if len(cells) < 3:
+            continue
+        try:
+            effective = datetime.strptime(cells[0].get_text(' ', strip=True), '%d %b %Y').date()
+        except ValueError:
+            continue
+        target = cells[2].get_text(' ', strip=True).replace(',', '')
+        if effective <= through and re.fullmatch(r'[+-]?\d+(?:\.\d+)?', target):
+            decisions[effective] = float(target)
+    ordered = sorted(decisions.items())
+    if len(ordered) < 20:
+        raise ValueError('RBA cash-rate table did not contain enough history')
+    if (through - ordered[-1][0]).days > 90:
+        raise ValueError('RBA cash-rate decision table is overdue')
+
+    data = []
+    decision = 0
+    current = ordered[0][1]
+    day = ordered[0][0]
+    while day <= through:
+        while decision + 1 < len(ordered) and ordered[decision + 1][0] <= day:
+            decision += 1
+            current = ordered[decision][1]
+        data.append([to_ms(day.isoformat()), current])
+        day += timedelta(days=1)
+    return data
+
+
+def rba_cash_rate():
+    response = None
+    for attempt in range(3):
+        try:
+            response = browser_requests.get(RBA_CASH_RATE_URL, impersonate='chrome', timeout=90, headers={
+                'Accept': 'text/html,application/xhtml+xml',
+                'Referer': 'https://www.rba.gov.au/statistics/',
+            })
+            response.raise_for_status()
+            break
+        except Exception:
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+    return rba_cash_rate_points(response.text), {
+        'source': 'Reserve Bank of Australia cash rate target',
+        'source_url': RBA_CASH_RATE_URL,
+        'frequency': 'd',
     }
 
 

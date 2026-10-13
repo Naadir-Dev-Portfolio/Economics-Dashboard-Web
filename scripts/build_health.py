@@ -16,6 +16,7 @@ SOURCE_SPECS = {
     'yahoo': ('Yahoo Finance', 'Yahoo Finance daily history', 'https://finance.yahoo.com/', 'Daily market observations; exchange holidays do not create new observations.'),
     'ons': ('ONS', 'Office for National Statistics', 'https://www.ons.gov.uk/', 'Official reporting periods, publication dates and next releases are retained.'),
     'bis': ('BIS', 'Bank for International Settlements', 'https://data.bis.org/', 'National consumer prices and daily central-bank policy rates. Policy-rate observations are published weekly, with a 14-day observation-age allowance; successful refreshes are still required within 36 hours.'),
+    'rba': ('RBA', 'Reserve Bank of Australia', 'https://www.rba.gov.au/statistics/cash-rate/', 'Official cash-rate target effective dates, expanded to the current day; BIS remains an automatic fallback.'),
     'boe': ('Bank of England', 'Bank of England monetary statistics', 'https://www.bankofengland.co.uk/', 'Structured monetary-statistics CSV.'),
     'ecb': ('ECB', 'European Central Bank monetary statistics', 'https://data.ecb.europa.eu/', 'Seasonally adjusted euro-area M3.'),
     'eurostat': ('Eurostat', 'European statistical office', 'https://ec.europa.eu/eurostat/', 'Euro-area unemployment, seasonally adjusted.'),
@@ -47,7 +48,7 @@ def hours_since(iso, now=None):
 
 
 def primary_method(config):
-    for field, method in [('bis_cpi', 'bis'), ('bis_policy', 'bis'), ('boe_money', 'boe'),
+    for field, method in [('bis_cpi', 'bis'), ('rba_cash_rate', 'rba'), ('bis_policy', 'bis'), ('boe_money', 'boe'),
                           ('ecb_money', 'ecb'), ('eurostat', 'eurostat'), ('ons', 'ons'),
                           ('yahoo', 'yahoo'), ('fred', 'fred'), ('uk_fuel', 'uk_fuel'),
                           ('uk_hpi', 'land_registry')]:

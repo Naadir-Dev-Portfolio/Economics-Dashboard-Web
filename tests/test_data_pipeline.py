@@ -17,7 +17,7 @@ import fetch_data
 import fetch_news
 import validate_data
 from data_quality import compute_stats, freshness, period_label, to_ms, validate_points, write_json, yoy
-from source_providers import redact_credentials, sdmx_points
+from source_providers import rba_cash_rate_points, redact_credentials, sdmx_points
 
 UTC = timezone.utc
 NOW = datetime(2026, 9, 3, tzinfo=UTC)
@@ -109,6 +109,26 @@ class DataQualityTests(unittest.TestCase):
             self.assertEqual(freshness(series, config, now), 'current')
             series['stats']['last_date'] = '2026-08-20'
             self.assertEqual(freshness(series, config, now), 'stale')
+
+    def test_rba_cash_rate_uses_official_effective_dates(self):
+        rows = []
+        for month in range(1, 11):
+            rows.append(f'<tr><th>1 {datetime(2025, month, 1):%b} 2025</th><td>0.00</td><td>3.50</td></tr>')
+        for month in range(1, 11):
+            value = '4.60' if month >= 9 else '4.35'
+            rows.append(f'<tr><th>1 {datetime(2026, month, 1):%b} 2026</th><td>0.00</td><td>{value}</td></tr>')
+        html = '<table><tbody>' + ''.join(reversed(rows)) + '</tbody></table>'
+        points = rba_cash_rate_points(html, datetime(2026, 10, 13).date())
+        self.assertEqual(points[0], [to_ms('2025-01-01'), 3.5])
+        self.assertEqual(points[-1], [to_ms('2026-10-13'), 4.6])
+        self.assertEqual(dict(points)[to_ms('2026-08-31')], 4.35)
+        self.assertEqual(dict(points)[to_ms('2026-09-01')], 4.6)
+
+    def test_rba_config_prefers_official_source_with_bis_fallback(self):
+        config = next(s for s in fetch_data.SECTIONS['rates']['series'] if s['id'] == 'rba_rate')
+        self.assertTrue(config['rba_cash_rate'])
+        self.assertEqual(config['bis_policy'], 'AU')
+        self.assertEqual(build_health.primary_method(config), 'rba')
 
     def test_atomic_writer_preserves_good_file_on_bad_payload(self):
         cache = ROOT / '.cache'
@@ -205,6 +225,20 @@ class FetchTests(unittest.TestCase):
             result = fetch_data.fetch_one(config)
         self.assertTrue(result['source_url'].endswith('/revised'))
         self.assertEqual([call.args[1] for call in fetch.call_args_list], ['preliminary', 'revised'])
+
+    def test_rba_official_source_precedes_bis_fallback(self):
+        config = next(s for s in fetch_data.SECTIONS['rates']['series'] if s['id'] == 'rba_rate')
+        today = datetime.now(UTC).date()
+        points = [[to_ms((today - timedelta(days=1)).isoformat()), 4.35],
+                  [to_ms(today.isoformat()), 4.60]]
+        meta = {'source': 'Reserve Bank of Australia cash rate target',
+                'source_url': 'https://www.rba.gov.au/statistics/cash-rate/', 'frequency': 'd'}
+        with patch.object(fetch_data, 'rba_cash_rate', return_value=(points, meta)), \
+             patch.object(fetch_data, 'bis_policy') as fallback:
+            result = fetch_data.fetch_one(config)
+        self.assertEqual(result['method'], 'rba')
+        self.assertEqual(result['stats']['last_value'], 4.6)
+        fallback.assert_not_called()
 
     def test_claims_counts_are_scaled_to_displayed_thousands(self):
         config = next(s for s in fetch_data.SECTIONS['employment']['series'] if s['id'] == 'us_claims')
@@ -330,6 +364,11 @@ class FetchTests(unittest.TestCase):
             errors, warnings = validate_data.report(Path(directory))
             with patch('builtins.print'):
                 self.assertEqual(validate_data.emit_report(Path(directory), data_warnings_only=True), [])
+            with patch('builtins.print') as output:
+                self.assertEqual(validate_data.emit_report(Path(directory), warnings_only=True), [])
+            annotations = [call.args[0] for call in output.call_args_list if call.args]
+            self.assertTrue(any(line.startswith('::warning::Core series:') for line in annotations))
+            self.assertFalse(any(line.startswith('::error::') for line in annotations))
         self.assertEqual(errors, ['Core series: refresh overdue (no observation)'])
         self.assertEqual(warnings, ['One feed: temporary failure (no observation)'])
 

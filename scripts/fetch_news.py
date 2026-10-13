@@ -39,7 +39,7 @@ SOURCES = [
     ("BBC World",      "https://feeds.bbci.co.uk/news/world/rss.xml",                     ["GLOBAL"]),
     ("Guardian Biz",   "https://www.theguardian.com/uk/business/rss",                     ["UK", "GLOBAL"]),
     ("Guardian Econ",  "https://www.theguardian.com/business/economics/rss",              ["UK", "GLOBAL"]),
-    ("Yahoo Finance",  "https://finance.yahoo.com/news/rssindex",                         ["US", "GLOBAL"]),
+    ("Yahoo Finance",  "https://news.google.com/rss/search?q=when:24h+site:finance.yahoo.com+markets+economy&hl=en-US&gl=US&ceid=US:en", ["US", "GLOBAL"]),
     ("Reuters Biz",    "https://news.google.com/rss/search?q=when:24h+source:reuters.com+business&hl=en-US&gl=US&ceid=US:en", ["GLOBAL"]),
     ("Reuters World",  "https://news.google.com/rss/search?q=when:24h+source:reuters.com+world&hl=en-US&gl=US&ceid=US:en",   ["GLOBAL"]),
     ("AP Economy",     "https://news.google.com/rss/search?q=when:24h+source:apnews.com+economy&hl=en-US&gl=US&ceid=US:en",  ["US", "GLOBAL"]),
