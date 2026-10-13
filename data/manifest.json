@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-13T02:05:12+00:00",
-  "duration_sec": 69.1,
+  "generated_at": "2026-10-13T09:09:01+00:00",
+  "duration_sec": 60.5,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -32,7 +32,7 @@
       "series_count": 9,
       "ok": 9,
       "fail": 0,
-      "stale": 1,
+      "stale": 0,
       "archived": 0
     },
     "inflation": {
@@ -128,7 +128,7 @@
   "totals": {
     "ok": 166,
     "fail": 0,
-    "stale": 1,
+    "stale": 0,
     "archived": 2
   }
 }
