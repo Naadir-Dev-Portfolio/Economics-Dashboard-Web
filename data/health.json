@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-14T10:05:44+00:00",
+  "generated_at": "2026-10-14T12:20:56+00:00",
   "schema_version": 2,
   "totals": {
-    "ok": 11,
-    "warning": 1,
+    "ok": 12,
+    "warning": 0,
     "error": 0,
     "runtime": 2,
     "total": 14
@@ -16,108 +16,17 @@
       "url": "https://finance.yahoo.com/",
       "type": "Scheduled data fetch",
       "icon": "",
-      "status": "warning",
+      "status": "ok",
       "expected": 45,
-      "delivered": 35,
+      "delivered": 45,
       "available": 45,
       "stale": 0,
-      "retained": 10,
+      "retained": 0,
       "archived": 0,
       "missing": 0,
-      "issues": [
-        {
-          "id": "dow",
-          "section": "markets",
-          "name": "Dow Jones",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T23:06:16+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "asx200",
-          "section": "markets",
-          "name": "ASX 200",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T23:06:23+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "gbp_usd",
-          "section": "fx",
-          "name": "GBP/USD",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:20+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "eur_usd",
-          "section": "fx",
-          "name": "EUR/USD",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:21+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "usd_jpy",
-          "section": "fx",
-          "name": "USD/JPY",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:21+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "usd_cny",
-          "section": "fx",
-          "name": "USD/CNY",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T23:07:05+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "usd_chf",
-          "section": "fx",
-          "name": "USD/CHF",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:22+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "aud_usd",
-          "section": "fx",
-          "name": "AUD/USD",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:23+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "usd_cad",
-          "section": "fx",
-          "name": "USD/CAD",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:23+00:00",
-          "severity": "warning"
-        },
-        {
-          "id": "usd_mxn",
-          "section": "fx",
-          "name": "USD/MXN",
-          "reason": "fetch failed; previous data retained",
-          "period": "13 Oct 2026",
-          "last_success": "2026-10-13T14:33:24+00:00",
-          "severity": "warning"
-        }
-      ],
-      "last_fetch": "2026-10-13T23:46:11+00:00",
-      "latest_data": "2026-10-13",
+      "issues": [],
+      "last_fetch": "2026-10-14T12:20:48+00:00",
+      "latest_data": "2026-10-14",
       "notes": "Daily market observations; exchange holidays do not create new observations. 0 historical-only series excluded from current-data counts."
     },
     {
@@ -136,8 +45,8 @@
       "archived": 2,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:46:11+00:00",
-      "latest_data": "2026-10-13",
+      "last_fetch": "2026-10-14T12:20:48+00:00",
+      "latest_data": "2026-10-14",
       "notes": "API with public CSV fallback. 2 historical-only series excluded from current-data counts."
     },
     {
@@ -156,7 +65,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:45:31+00:00",
+      "last_fetch": "2026-10-14T12:20:10+00:00",
       "latest_data": "2026-10-06",
       "notes": "National consumer prices and daily central-bank policy rates. Policy-rate observations are published weekly, with a 14-day observation-age allowance; successful refreshes are still required within 36 hours. 0 historical-only series excluded from current-data counts."
     },
@@ -176,8 +85,8 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:45:27+00:00",
-      "latest_data": "2026-10-13",
+      "last_fetch": "2026-10-14T12:20:07+00:00",
+      "latest_data": "2026-10-14",
       "notes": "Official cash-rate target effective dates, expanded to the current day; BIS remains an automatic fallback. 0 historical-only series excluded from current-data counts."
     },
     {
@@ -196,7 +105,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:46:07+00:00",
+      "last_fetch": "2026-10-14T12:20:45+00:00",
       "latest_data": "2026-08-01",
       "notes": "Official reporting periods, publication dates and next releases are retained. 0 historical-only series excluded from current-data counts."
     },
@@ -216,7 +125,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:45:33+00:00",
+      "last_fetch": "2026-10-14T12:20:13+00:00",
       "latest_data": "2026-08-01",
       "notes": "Structured monetary-statistics CSV. 0 historical-only series excluded from current-data counts."
     },
@@ -236,7 +145,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:45:35+00:00",
+      "last_fetch": "2026-10-14T12:20:15+00:00",
       "latest_data": "2026-08-01",
       "notes": "Seasonally adjusted euro-area M3. 0 historical-only series excluded from current-data counts."
     },
@@ -256,7 +165,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:45:39+00:00",
+      "last_fetch": "2026-10-14T12:20:19+00:00",
       "latest_data": "2026-07-01",
       "notes": "Monthly observations published with a reporting lag. 0 historical-only series excluded from current-data counts."
     },
@@ -276,7 +185,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:45:46+00:00",
+      "last_fetch": "2026-10-14T12:20:30+00:00",
       "latest_data": "2026-10-12",
       "notes": "Weekly road-fuel observations. 0 historical-only series excluded from current-data counts."
     },
@@ -296,7 +205,7 @@
       "archived": 0,
       "missing": 0,
       "issues": [],
-      "last_fetch": "2026-10-13T23:46:02+00:00",
+      "last_fetch": "2026-10-14T12:20:41+00:00",
       "latest_data": "2026-08-01",
       "notes": "Euro-area unemployment, seasonally adjusted. 0 historical-only series excluded from current-data counts."
     },
@@ -310,7 +219,7 @@
       "status": "ok",
       "delivered": 14,
       "expected": 14,
-      "last_fetch": "2026-10-14T10:05:39+00:00",
+      "last_fetch": "2026-10-14T12:20:52+00:00",
       "issues": [],
       "notes": "Published dates only. Cached and provisional entries retain their verification status; unannounced dates are not estimated."
     },
@@ -321,110 +230,110 @@
       "url": "",
       "icon": "",
       "type": "Hourly news fetch",
-      "last_fetch": "2026-10-14T10:05:35+00:00",
+      "last_fetch": "2026-10-14T12:20:49+00:00",
       "status": "ok",
       "delivered": 14,
       "expected": 14,
       "sub_sources": {
-        "BBC Business": 50,
+        "BBC Business": 51,
         "BBC World": 24,
         "Guardian Biz": 40,
         "Guardian Econ": 20,
         "Yahoo Finance": 100,
-        "Reuters Biz": 65,
-        "Reuters World": 52,
+        "Reuters Biz": 67,
+        "Reuters World": 51,
         "AP Economy": 3,
         "Bloomberg": 65,
         "Federal Reserve": 15,
         "Bank of England": 50,
         "ECB": 15,
-        "CNBC Markets": 30,
+        "CNBC Markets": 29,
         "MarketWatch": 10
       },
       "feed_status": {
         "BBC Business": {
           "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "BBC World": {
           "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Guardian Biz": {
           "url": "https://www.theguardian.com/uk/business/rss",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Guardian Econ": {
           "url": "https://www.theguardian.com/business/economics/rss",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Yahoo Finance": {
           "url": "https://news.google.com/rss/search?q=when:24h+site:finance.yahoo.com+markets+economy&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Reuters Biz": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:reuters.com+business&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Reuters World": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:reuters.com+world&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "AP Economy": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:apnews.com+economy&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Bloomberg": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:bloomberg.com&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Federal Reserve": {
           "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "Bank of England": {
           "url": "https://www.bankofengland.co.uk/rss/news",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "ECB": {
           "url": "https://www.ecb.europa.eu/rss/press.xml",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "CNBC Markets": {
           "url": "https://www.cnbc.com/id/15839069/device/rss/rss.html",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         },
         "MarketWatch": {
           "url": "http://feeds.marketwatch.com/marketwatch/topstories/",
-          "checked_at": "2026-10-14T10:05:35+00:00",
+          "checked_at": "2026-10-14T12:20:49+00:00",
           "status": "ok",
-          "last_success": "2026-10-14T10:05:35+00:00"
+          "last_success": "2026-10-14T12:20:49+00:00"
         }
       },
       "issues": [],
