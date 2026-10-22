@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-21T23:20:03+00:00",
+  "generated_at": "2026-10-22T04:39:47+00:00",
   "schema_version": 2,
   "totals": {
     "ok": 11,
@@ -219,7 +219,7 @@
       "status": "warning",
       "delivered": 11,
       "expected": 14,
-      "last_fetch": "2026-10-21T23:15:22+00:00",
+      "last_fetch": "2026-10-22T04:33:42+00:00",
       "issues": [
         {
           "name": "us_nfp",
@@ -252,19 +252,19 @@
       "url": "",
       "icon": "",
       "type": "Hourly news fetch",
-      "last_fetch": "2026-10-21T23:15:18+00:00",
+      "last_fetch": "2026-10-22T04:33:38+00:00",
       "status": "ok",
       "delivered": 14,
       "expected": 14,
       "sub_sources": {
-        "BBC Business": 54,
+        "BBC Business": 55,
         "BBC World": 38,
         "Guardian Biz": 40,
         "Guardian Econ": 20,
         "Yahoo Finance": 100,
         "Reuters Biz": 69,
-        "Reuters World": 48,
-        "AP Economy": 4,
+        "Reuters World": 55,
+        "AP Economy": 3,
         "Bloomberg": 68,
         "Federal Reserve": 15,
         "Bank of England": 50,
@@ -275,87 +275,87 @@
       "feed_status": {
         "BBC Business": {
           "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "BBC World": {
           "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Guardian Biz": {
           "url": "https://www.theguardian.com/uk/business/rss",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Guardian Econ": {
           "url": "https://www.theguardian.com/business/economics/rss",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Yahoo Finance": {
           "url": "https://news.google.com/rss/search?q=when:24h+site:finance.yahoo.com+markets+economy&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Reuters Biz": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:reuters.com+business&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Reuters World": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:reuters.com+world&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "AP Economy": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:apnews.com+economy&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Bloomberg": {
           "url": "https://news.google.com/rss/search?q=when:24h+source:bloomberg.com&hl=en-US&gl=US&ceid=US:en",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Federal Reserve": {
           "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "Bank of England": {
           "url": "https://www.bankofengland.co.uk/rss/news",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "ECB": {
           "url": "https://www.ecb.europa.eu/rss/press.xml",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "CNBC Markets": {
           "url": "https://www.cnbc.com/id/15839069/device/rss/rss.html",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         },
         "MarketWatch": {
           "url": "http://feeds.marketwatch.com/marketwatch/topstories/",
-          "checked_at": "2026-10-21T23:15:18+00:00",
+          "checked_at": "2026-10-22T04:33:38+00:00",
           "status": "ok",
-          "last_success": "2026-10-21T23:15:18+00:00"
+          "last_success": "2026-10-22T04:33:38+00:00"
         }
       },
       "issues": [],
