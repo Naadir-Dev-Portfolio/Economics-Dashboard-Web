@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-08T22:27:53+00:00",
-  "duration_sec": 57.8,
+  "generated_at": "2026-11-08T23:47:41+00:00",
+  "duration_sec": 52.5,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -8,8 +8,8 @@
       "blurb": "Major global stock indices. The pulse of risk appetite.",
       "file": "data/markets.json",
       "series_count": 17,
-      "ok": 17,
-      "fail": 0,
+      "ok": 16,
+      "fail": 1,
       "stale": 0,
       "archived": 0
     },
@@ -85,8 +85,8 @@
       "blurb": "Exchange rates and the dollar's grip on global liquidity.",
       "file": "data/fx.json",
       "series_count": 16,
-      "ok": 15,
-      "fail": 1,
+      "ok": 16,
+      "fail": 0,
       "stale": 0,
       "archived": 0
     },
