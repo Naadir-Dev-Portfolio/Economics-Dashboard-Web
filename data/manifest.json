@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-26T02:53:56+00:00",
-  "duration_sec": 50.8,
+  "generated_at": "2026-11-26T17:17:47+00:00",
+  "duration_sec": 46.0,
   "sections": {
     "markets": {
       "title": "Equity Markets",
@@ -43,7 +43,7 @@
       "series_count": 12,
       "ok": 12,
       "fail": 0,
-      "stale": 1,
+      "stale": 0,
       "archived": 0
     },
     "money": {
@@ -128,7 +128,7 @@
   "totals": {
     "ok": 166,
     "fail": 0,
-    "stale": 2,
+    "stale": 1,
     "archived": 2
   }
 }
